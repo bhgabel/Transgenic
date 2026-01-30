@@ -10,15 +10,15 @@ library(readr)
 library(readxl)
 library(tidyverse)
 library(TCGAbiolinks)
-
+# library(genefu)
 # data("pam50")
 # data("pam50.robust")
 
 #Creating and subsetting data frames ----
 #FPKM z-scores gene expression
-mrna <- read_delim("mRNA expression Zscores.txt", 
+mrna <- read_delim("pam50 mRNA expression fpkm Zscores.tsv", 
                   delim = "\t", escape_double = FALSE, trim_ws = TRUE) %>%
-       dplyr::select(-c('STUDY_ID', 'MSH2', 'MLH1'))
+       dplyr::select(c('SAMPLE_ID', 'MLH1', 'MSH2'))
 
 #Clinical info
 clinical <- read_delim("brca_tcga_gdc_clinical_data.tsv", 
@@ -30,9 +30,9 @@ firehose <- read_excel("~/Documents/Haricharan/PanCancer/TCGA_Firehose.xlsx", sh
             dplyr::select(c("Sample ID", "ER Status By IHC", "IHC-HER2", "PR status by ihc"))
 
 #Combine into one data frame, rename for pam50 subtyping
-gdc <- right_join(clinical, mrna_pam50, by=c("Sample ID" = "SAMPLE_ID"))
+gdc <- right_join(clinical, mrna, by=c("Sample ID" = "SAMPLE_ID"))
        #rename(all_of(c("CDCA1" = "NUF2", "KNTC2" = "NDC80", "ORC6L" = "ORC6")))
-gdc <- left_join(gdc, mrna, by=c("Sample ID" = "SAMPLE_ID"))
+# gdc <- left_join(gdc, mrna, by=c("Sample ID" = "SAMPLE_ID"))
 
 #Add MSI MANTIS scores
 mantis <- read_excel("MSI_Mantis.xlsx") %>%
@@ -48,9 +48,6 @@ colnames(CIN_data)[1] <- 'Patient ID'
 
 gdc <- left_join(gdc, CIN_data[c('Patient ID', 'Total', 'CX1', 'CX6')])
 
-#remove primary data frames, since everything joined into gdc
-remove(list = c('CIN_data', 'clinical', 'firehose', 'mantis', 'mrna', 'mrna_pam50', 'subtypes'))
-
 
 # gene_info <- data.frame(colnames(firehose)[-c(1:5)], pam50$centroids.map$EntrezGene.ID)
 # colnames(gene_info) <- c("probe", "EntrezGene.ID")
@@ -64,7 +61,10 @@ subtypes <- TCGAquery_subtype("brca") %>% dplyr::select(c("patient", "BRCA_Subty
 gdc <- left_join(gdc, subtypes, by=c("Patient ID" = "patient"))
 
 #Rename columns
-colnames(gdc) <- c('Patient ID', 'Sample ID', 'Mutations', 'FGA', 'MLH1', 'MSH2', 'p53', 'ERBB2', 'ESR1', 'MANTIS', 'ER', 'HER2', 'PR', 'CIN', 'CX1', 'CX6', 'PAM50')
+colnames(gdc) <- c('Patient ID', 'Sample ID', 'Mutations', 'FGA', 'MLH1', 'MSH2', 'MANTIS', 'ER', 'HER2', 'PR', 'CIN', 'CX1', 'CX6', 'PAM50')
+
+#remove primary data frames, since everything joined into gdc
+remove(list = c('CIN_data', 'clinical', 'firehose', 'mantis', 'mrna', 'mrna_pam50', 'subtypes'))
 
 #Assign factors ----
 #Assign factors + basal/lum
@@ -137,13 +137,14 @@ for(i in 1:length(gdc$MSH2_quin)){
 #Assign MSI factors
 #per paper, high cutoff=0.4
 #low cutoff = ???, trying top 5% 0.3559
+MSI_prob <- quantile(gdc$MANTIS, probs=0.95, na.rm=T)
 gdc$MSI <- factor("MSS", levels=c("MSI-H", 'MSI-L', "MSS"))
 for (i in 1:length(gdc$MSI)){
   if(is.na(gdc$MANTIS[[i]])){
     #pass; do nothing
   }else if(gdc$MANTIS[[i]] >= 0.4){
     gdc$MSI[[i]] <- "MSI-H"
-  }else if(gdc$MANTIS[[i]] >= 0.3559){
+  }else if(gdc$MANTIS[[i]] >= MSI_prob){
     gdc$MSI[[i]] <- 'MSI-L'
   }
 }
@@ -163,25 +164,44 @@ for(i in 1:length(gdc$HR)){
   }
 }
 
-#CIN factor, high cutoff = ? 1.97 is total 75 percentile
-gdc$CIN_f <- factor('NA', levels=c('CIN High', 'CIN Low', 'NA'))
-for(i in 1:length(gdc$CIN)){
-  if(is.na(gdc$CIN[[i]])){
-    gdc$CIN_f[[i]] <- 'NA'
-  } else if(gdc$CIN[[i]] > 1.97){
-    gdc$CIN_f[[i]] <- 'CIN High'
+#CIN factor using CX1 metric, high cutoff = ? 0.6584 is total 75 percentile
+gdc$CIN_fga <- factor('NA', levels=c('CIN Low', 'CIN High', 'NA'))
+gdc$CIN_cx1 <- factor('NA', levels=c('CIN Low', 'CIN High', 'NA'))
+FGA_prob <- quantile(gdc$FGA, probs=0.75, na.rm=T)
+CX1_prob <- quantile(gdc$CX1, probs=0.75, na.rm=T)
+#FGA
+for(i in 1:length(gdc$`Patient ID`)){
+  if(is.na(gdc$FGA[[i]])){
+    gdc$CIN_fga[[i]] <- 'NA'
+  } else if(gdc$FGA[[i]] > FGA_prob){
+    gdc$CIN_fga[[i]] <- 'CIN High'
   } else{
-    gdc$CIN_f[[i]] <- 'CIN Low'
+    gdc$CIN_fga[[i]] <- 'CIN Low'
+  }
+}
+#CX1
+for(i in 1:length(gdc$`Patient ID`)){
+  if(is.na(gdc$CX1[[i]])){
+    gdc$CIN_cx1[[i]] <- 'NA'
+  } else if(gdc$CX1[[i]] > CX1_prob){
+    gdc$CIN_cx1[[i]] <- 'CIN High'
+  } else{
+    gdc$CIN_cx1[[i]] <- 'CIN Low'
   }
 }
 
 
+write.csv(gdc, file="tcga_prepped.csv")
 
-#T-tests for non-normal data ----
+
+#Statistical tests ----
 pairwise.wilcox.test(gdc$Mutations, gdc$pam50_f)
 pairwise.wilcox.test(gdc$Mutations, gdc$MLH1_quin)
 pairwise.wilcox.test(gdc$Mutations, gdc$MSH2_quin)
 pairwise.wilcox.test(gdc$Mutations, gdc$MSI)
+
+wilcox.test(gdc$Mutations[gdc$CIN_cx1 == 'CIN High'], gdc$Mutations[gdc$CIN_cx1 == 'CIN Low'])
+wilcox.test(gdc$Mutations[gdc$CIN_fga == 'CIN High'], gdc$Mutations[gdc$CIN_fga == 'CIN Low'])
 
 wilcox.test(gdc$Mutations[gdc$MLH1_low], gdc$Mutations[!gdc$MLH1_low])
 wilcox.test(gdc$Mutations[gdc$MSH2_low], gdc$Mutations[!gdc$MSH2_low])
@@ -238,6 +258,10 @@ table(gdc$MSI, gdc$MMR)
 chisq.test(table(gdc$MSI, gdc$MMR))
 chisq.test(c(28,20,172), p=c(69/701, 44/701, 588/701)) #p=0.06435, MSI-L vs MSS
 
+#assumptions not met
+cor.test(gdc$Mutations, gdc$CX1) #sig
+cor.test(gdc$Mutations, gdc$FGA) #not sig
+
 
 #Plots ----
 ##Boxplots ----
@@ -258,6 +282,10 @@ ggplot(data=gdc, aes(x=MMR, y=Mutations, fill=PAM50)) +
   labs(title="Mutation Count per Subtype with Low Gene Expression")
 
 ggplot(data=gdc, aes(x=MMR, y=Mutations, fill=pam50_f)) +
+  geom_boxplot() + scale_y_continuous(trans="log10") + theme_classic() +
+  labs(title="Mutation Count per Subtype with Low Gene Expression")
+
+ggplot(data=gdc, aes(x=pam50_f, y=Mutations, fill=MMR)) +
   geom_boxplot() + scale_y_continuous(trans="log10") + theme_classic() +
   labs(title="Mutation Count per Subtype with Low Gene Expression")
 
@@ -322,7 +350,11 @@ ggplot(data=gdc, aes(x=MSI, y=Mutations, fill=pam50_f)) +
   theme_classic() + labs(title="MSI + TMB")
 
 #CIN
-ggplot(data=subset(gdc, CIN_f != 'NA'), aes(x=CIN_f, y=Mutations, fill=CIN_f)) +
+ggplot(data=subset(gdc, CIN_fga != 'NA'), aes(x=CIN_fga, y=Mutations, fill=CIN_fga)) +
+  geom_boxplot() + scale_y_continuous(trans="log10") +
+  theme_classic() + labs(title="CIN + TMB")
+
+ggplot(data=subset(gdc, CIN_cx1 != 'NA'), aes(x=CIN_cx1, y=Mutations, fill=CIN_cx1)) +
   geom_boxplot() + scale_y_continuous(trans="log10") +
   theme_classic() + labs(title="CIN + TMB")
 
@@ -330,6 +362,11 @@ ggplot(data=subset(gdc, CIN_f != 'NA'), aes(x=CIN_f, y=Mutations, fill=CIN_f)) +
 ggplot(data=subset(gdc, MMR != "None"), aes(x=HR, fill=MMR)) +
   geom_bar(position="fill", stat="count") +
   theme_classic() + labs(title="Low mRNA Expression")
+
+ggplot(data=subset(gdc, MMR != "None" & PAM50 != "NA"), aes(x=MMR, fill=PAM50)) +
+  geom_bar(position="fill", stat="count") +
+  theme_classic() + labs(title="Low mRNA Expression")
+table(gdc$PAM50, gdc$MMR)
 
 ggplot(data=gdc, aes(x=HR, fill=MMR)) +
   geom_bar(position="fill", stat="count") +
@@ -339,23 +376,16 @@ ggplot(data=gdc, aes(x=MSI, fill=MMR)) +
   geom_bar(position="fill", stat="count") +
   theme_classic() + labs(title="Low mRNA Expression")
 
+ggplot(data=gdc, aes(x=pam50_f, fill=MSI)) +
+  geom_bar(position="fill", stat="count") +
+  theme_classic() + labs(title="MSI Status by Subtype")
+
 ggplot(data=gdc, aes(x=HR, fill=MSI)) +
   geom_bar(position="fill", stat="count") +
   theme_classic() + labs(title="MSI Classification")
 
-ggplot(data=subset(gdc, CIN_f != 'NA'), aes(x=CIN_f, fill=MMR)) +
-  geom_bar(position="fill", stat="count") +
-  theme_classic() + labs(title="Low mRNA Expression")
 
-ggplot(data=subset(gdc, CIN_f != 'NA'), aes(x=HR, fill=CIN_f)) +
-  geom_bar(position="fill", stat="count") +
-  theme_classic() + labs(title="Low mRNA Expression")
-
-ggplot(data=subset(gdc, CIN_f != 'NA'), aes(x=HR, fill=CIN_f)) +
-  geom_bar(position="fill", stat="count") + facet_grid(MMR ~ .) +
-  theme_classic() + labs(title="CIN by HR and MMR low")
-
-#MSI by HR subtype
+#MSI by subtype
 ggplot(data=subset(gdc, HR == 'HR+/HER2+'), aes(x=MMR, fill=MSI)) +
   geom_bar(position="fill", stat="count") +
   theme_classic() + labs(title="HR+/HER2+")
@@ -376,10 +406,37 @@ ggplot(data=gdc, aes(x=HR, fill=MSI)) +
   geom_bar(position="fill", stat="count") + facet_grid(MMR ~ .) +
   theme_classic() + labs(title="MSI by HR and MMR low")
 
-#CIN scatter plots
+ggplot(data=gdc, aes(x=pam50_f, fill=MSI)) +
+  geom_bar(position="fill", stat="count") + facet_grid(MMR ~ .) +
+  theme_classic() + labs(title="MSI by HR and MMR low")
+
+#CIN
+ggplot(data=subset(gdc, CIN_f != 'NA'), aes(x=CIN_f, fill=MMR)) +
+  geom_bar(position="fill", stat="count") +
+  theme_classic() + labs(title="Low mRNA Expression")
+
+ggplot(data=subset(gdc, CIN_f != 'NA'), aes(x=HR, fill=CIN_f)) +
+  geom_bar(position="fill", stat="count") +
+  theme_classic() + labs(title="Low mRNA Expression")
+
+ggplot(data=subset(gdc, CIN_f != 'NA'), aes(x=HR, fill=CIN_f)) +
+  geom_bar(position="fill", stat="count") + facet_grid(MMR ~ .) +
+  theme_classic() + labs(title="CIN by HR and MMR low")
+
 # mutations < 100 just to visualize data since range too wide
-ggplot(data=subset(gdc, Mutations <= 100), aes(x=CX1, y=Mutations)) +
-  geom_point()
+ggplot(data=subset(gdc, Mutations <= 100 & !is.na(CX1)), aes(x=CX1, y=Mutations)) +
+  geom_point() + geom_smooth(method='lm', se=F)
 
 ggplot(data=subset(gdc, Mutations <= 100), aes(x=FGA, y=Mutations)) +
-  geom_point()
+  geom_point() + geom_smooth(method='lm', se=F)
+
+ggplot(data=subset(gdc, !is.na(CX1)), aes(x=CX1, y=FGA)) + geom_point() + geom_smooth(method='lm', se=F)
+
+
+aneuploidy_score <- read_excel("aneuploidy_score.xlsx")
+cin <- left_join(gdc, aneuploidy_score, by=c("Sample ID"="Sample"))
+ggplot(data=cin, aes(x=FGA, y=`AneuploidyScore(AS)`)) + geom_point() + geom_smooth(method='lm', se=F)
+ggplot(data=cin, aes(x=`AneuploidyScore(AS)`, y=FGA)) + geom_point() + geom_smooth(method='lm', se=F)
+ggplot(data=subset(cin, Mutations <= 100), aes(x=`AneuploidyScore(AS)`, y=Mutations)) + geom_point() + geom_smooth(method='lm', se=F)
+
+cor.test(cin$Mutations, cin$`AneuploidyScore(AS)`)       
