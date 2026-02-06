@@ -5,4 +5,6 @@
 *.xlsx
 *.csv
 *.tsv
+*.txt
 .DS_Store
+brca_tcga_gdc
