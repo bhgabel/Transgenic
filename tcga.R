@@ -7,7 +7,15 @@ SFRP1, SLC39A6, TMEM45B, TYMS, UBE2C, UBE2T
 CDCA1 -> NUF2, KNTC2 -> NDC80, ORC6L -> ORC6"""
 
 library(tidyverse)
+<<<<<<< HEAD:tcga.R
 library(ggsignif)
+=======
+library(ggplot2)
+library(ggsignif)
+# library(genefu)
+# data("pam50")
+# data("pam50.robust")
+>>>>>>> 04b6728a222bc79cca8d7ce5360879b862ab8caf:tcga.R
 
 #Creating and subsetting data frames ----
 #FPKM z-scores gene expression
