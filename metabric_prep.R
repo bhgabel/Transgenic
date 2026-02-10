@@ -66,5 +66,6 @@ for(i in 1:length(meta$PAM50)){
   }
 }
 
+meta <- drop_na(meta)
 
-write.csv("metabric_prepped.csv")
+write.csv(meta, "metabric_prepped.csv")
