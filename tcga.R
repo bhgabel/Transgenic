@@ -1,13 +1,6 @@
-# pam50 probes
-"""ACTR3B, ANLN, BAG1, BCL2, BIRC5, BLVRA, CCNB1, CCNE1, CDC20, CDC6, CDCA1, 
-CDH3, CENPF, CEP55, CXXC5, EGFR, ERBB2, ESR1, EXO1, FGFR4, FOXA1, FOXC1, 
-GPR160, GRB7, KIF2C, KNTC2, KRT14, KRT17, KRT5, MAPT, MDM2, MELK, MIA, 
-MKI67, MLPH, MMP11, MYBL2, MYC, NAT1, ORC6L, PGR, PHGDH, PTTG1, RRM2, 
-SFRP1, SLC39A6, TMEM45B, TYMS, UBE2C, UBE2T
-CDCA1 -> NUF2, KNTC2 -> NDC80, ORC6L -> ORC6"""
-
 library(tidyverse)
 library(ggsignif)
+library(car)
 
 gdc <- read.csv("tcga_prepped.csv")
 
@@ -68,6 +61,12 @@ wilcox.test(gdc$Mutations[gdc$MSI=="MSI-H" & gdc$MSH2_low],
 wilcox.test(gdc$Mutations[gdc$MSI=="MSS" & gdc$MSH2_low],
             gdc$Mutations[gdc$MSI=="MSS" & !gdc$MSH2_low])
 
+#TNBC pt, MLH1 low vs not
+wilcox.test(gdc$Mutations[gdc$MLH1_low & gdc$HR=="TNBC"],
+            gdc$Mutations[!gdc$MLH1_low & gdc$HR=="TNBC"])
+wilcox.test(gdc$MANTIS[gdc$MLH1_low & gdc$HR=="TNBC"],
+            gdc$MANTIS[!gdc$MLH1_low & gdc$HR=="TNBC"])
+
 wilcox.test(gdc$Mutations[gdc$CIN_f=='CIN High'], gdc$Mutations[gdc$CIN_f=='CIN Low'])
 
 #chi square tests for stacked columns
@@ -78,6 +77,16 @@ chisq.test(c(28,20,172), p=c(69/701, 44/701, 588/701)) #p=0.06435, MSI-L vs MSS
 #assumptions not met
 cor.test(gdc$Mutations, gdc$CX1) #sig
 cor.test(gdc$Mutations, gdc$FGA) #not sig
+
+mlh1.lm <- lm(data=subset(gdc, MMR == "MLH1"), log(Mutations) ~ HR)
+mlh1.glm <- glm(data=subset(gdc, MMR == "MLH1"), Mutations ~ HR, family=quasipoisson)
+plot(mlh1.lm); anova(mlh1.lm)
+kruskal.test(data=subset(gdc, MMR == "MLH1"), Mutations ~ HR)
+
+msi.lm <- lm(data=subset(gdc, MMR == "MLH1"), MANTIS ~ HR)
+msi.glm <- glm(data=subset(gdc, MMR == "MLH1"), Mutations ~ HR, family=quasipoisson)
+plot(msi.lm); anova(msi.lm)
+kruskal.test(data=subset(gdc, MMR == "MLH1"), Mutations ~ HR)
 
 
 #Plots ----
@@ -166,12 +175,35 @@ ggplot(data=subset(gdc, pam50_f=="Basal"), aes(x=MSH2_quin, y=Mutations, fill=MS
   labs(title="Basal - Quintiles")
 
 ##MLH1 / MSH2 low per subtype
-ggplot(data=gdc, aes(x=pam50_f, y=Mutations, fill=MLH1_low)) +
+ggplot(data=gdc, aes(x=HR, y=Mutations, fill=MLH1_low)) +
   geom_boxplot() + scale_y_continuous(trans="log10") + theme_classic()
 ggplot(data=gdc, aes(x=pam50_f, y=Mutations, fill=MSH2_low)) +
   geom_boxplot() + scale_y_continuous(trans="log10") + theme_classic()
 
+ggplot(data=subset(gdc, MMR=="MLH1"), aes(x=HR, y=Mutations, fill=HR)) +
+  geom_boxplot() + scale_y_continuous(trans="log10") + theme_classic()
+
 ##MSI
+ggplot(data=gdc, aes(x=MMR, y=MANTIS, fill=MMR)) +
+  geom_boxplot() + theme_classic() + labs(title="MANTIS Scores") +
+  ylim(0, 0.5) + geom_hline(yintercept=0.4, linetype="dashed")
+
+ggplot(data=gdc, aes(x=HR, y=MANTIS, fill=HR)) +
+  geom_boxplot() + theme_classic() + labs(title="MANTIS Scores") +
+  ylim(0, 0.6) + geom_hline(yintercept=0.4, linetype="dashed")
+
+ggplot(data=gdc, aes(x=MMR, y=MANTIS, fill=HR)) +
+  geom_boxplot() + theme_classic() + labs(title="MANTIS Scores") +
+  ylim(0, 0.6) + geom_hline(yintercept=0.4, linetype="dashed")
+
+#get basic stats for above plots
+table(gdc$HR, gdc$MMR)
+gdc %>% dplyr::group_by(MMR, HR) %>% dplyr::summarise(mean = mean(MANTIS, na.rm=T), .groups="drop") %>% pivot_wider(names_from=MMR, values_from=mean)
+
+ggplot(data=gdc, aes(x=HR, y=MANTIS)) +
+  geom_boxplot() + theme_classic() + labs(title="MANTIS Scores") +
+  ylim(0.2, 0.5) + facet_grid(MMR ~ .) + geom_hline(yintercept=0.4, linetype="dashed")
+
 ggplot(data=gdc, aes(x=MSI, y=Mutations, fill=MSI)) +
   geom_boxplot() + scale_y_continuous(trans="log10") +
   theme_classic() + labs(title="MSI + TMB")
@@ -271,11 +303,3 @@ ggplot(data=subset(gdc, Mutations <= 100), aes(x=FGA, y=Mutations)) +
 
 ggplot(data=subset(gdc, !is.na(CX1)), aes(x=CX1, y=FGA)) + geom_point() + geom_smooth(method='lm', se=F)
 
-
-aneuploidy_score <- read_excel("aneuploidy_score.xlsx")
-cin <- left_join(gdc, aneuploidy_score, by=c("Sample ID"="Sample"))
-ggplot(data=cin, aes(x=FGA, y=`AneuploidyScore(AS)`)) + geom_point() + geom_smooth(method='lm', se=F)
-ggplot(data=cin, aes(x=`AneuploidyScore(AS)`, y=FGA)) + geom_point() + geom_smooth(method='lm', se=F)
-ggplot(data=subset(cin, Mutations <= 100), aes(x=`AneuploidyScore(AS)`, y=Mutations)) + geom_point() + geom_smooth(method='lm', se=F)
-
-cor.test(cin$Mutations, cin$`AneuploidyScore(AS)`)
