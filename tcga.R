@@ -172,6 +172,26 @@ ggplot(data=gdc, aes(x=pam50_f, y=Mutations, fill=MSH2_low)) +
   geom_boxplot() + scale_y_continuous(trans="log10") + theme_classic()
 
 ##MSI
+ggplot(data=gdc, aes(x=MMR, y=MANTIS, fill=MMR)) +
+  geom_boxplot() + theme_classic() + labs(title="MANTIS Scores") +
+  ylim(0, 0.5) + geom_hline(yintercept=0.4, linetype="dashed")
+
+ggplot(data=gdc, aes(x=HR, y=MANTIS, fill=HR)) +
+  geom_boxplot() + theme_classic() + labs(title="MANTIS Scores") +
+  ylim(0, 0.6) + geom_hline(yintercept=0.4, linetype="dashed")
+
+ggplot(data=gdc, aes(x=MMR, y=MANTIS, fill=HR)) +
+  geom_boxplot() + theme_classic() + labs(title="MANTIS Scores") +
+  ylim(0, 0.6) + geom_hline(yintercept=0.4, linetype="dashed")
+
+#get basic stats for above plots
+table(gdc$HR, gdc$MMR)
+gdc %>% group_by(MMR, HR) %>% summarise(mean = mean(MANTIS, na.rm=T), .groups="drop") %>% pivot_wider(names_from=MMR, values_from=mean)
+
+ggplot(data=gdc, aes(x=HR, y=MANTIS)) +
+  geom_boxplot() + theme_classic() + labs(title="MANTIS Scores") +
+  ylim(0.2, 0.5) + facet_grid(MMR ~ .) + geom_hline(yintercept=0.4, linetype="dashed")
+
 ggplot(data=gdc, aes(x=MSI, y=Mutations, fill=MSI)) +
   geom_boxplot() + scale_y_continuous(trans="log10") +
   theme_classic() + labs(title="MSI + TMB")
