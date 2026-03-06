@@ -198,7 +198,11 @@ ggplot(data=gdc, aes(x=MMR, y=MANTIS, fill=HR)) +
 
 #get basic stats for above plots
 table(gdc$HR, gdc$MMR)
+<<<<<<< HEAD
 gdc %>% dplyr::group_by(MMR, HR) %>% dplyr::summarise(mean = mean(MANTIS, na.rm=T), .groups="drop") %>% pivot_wider(names_from=MMR, values_from=mean)
+=======
+gdc %>% group_by(MMR, HR) %>% summarise(mean = mean(MANTIS, na.rm=T), .groups="drop") %>% pivot_wider(names_from=MMR, values_from=mean)
+>>>>>>> 4755cf628d7a6dd8045a75632879e9762a71815d
 
 ggplot(data=gdc, aes(x=HR, y=MANTIS)) +
   geom_boxplot() + theme_classic() + labs(title="MANTIS Scores") +
