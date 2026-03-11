@@ -83,6 +83,7 @@ tcga.mmr <- subset(tcga, xor(MLH1 <= mlh1,  MSH2 <= msh2))
 # top.genes <- top.mouse[top.mouse %in% colnames(tcga)]
 
 #combine tcga and mouse data
+mt <- add_column(mt, pam50=mouse.pam50, .before=1)
 total <- rbind(mt, tcga)
 total <- data.frame(type = factor("Human", levels=c("Mouse", "Human")),
                     pam50 = factor("Normal", levels=c("LumA", "LumB", "Her2",
@@ -93,7 +94,6 @@ total$pam50[1:7] <- mouse.pam50
 total$pam50[8:length(total$pam50)] <- tcga$pam50
 
 #combine MMR loss and mouse data
-mt <- add_column(mt, pam50=mouse.pam50, .before=1)
 mmr <- rbind(mt, tcga.mmr)
 mmr <- data.frame(type = factor("Human", levels=c("Mouse", "Human")),
                   MMR = factor("MLH1", levels=c("MLH1", "MSH2")), mmr)
@@ -105,7 +105,7 @@ mmr$MMR[1:4] <- "MLH1"
 mmr$MMR[5:7] <- "MSH2"
 
 mmr <- mutate(mmr, MMR = as.factor(MMR), pam50 = as.factor(pam50))
-mmr <- add_column(mmr, combo = as.string(mmr$MMR:mmr$pam50), .after=3)
+mmr <- add_column(mmr, combo = as.character(mmr$MMR:mmr$pam50), .after=3)
 for(i in 1:length(mmr$combo)){
   if(mmr$MMR[[i]] == "MLH1"){
     if(mmr$pam50[[i]] == "LumA" | mmr$pam50[[i]] == "LumB"){
@@ -118,11 +118,11 @@ for(i in 1:length(mmr$combo)){
   }
 }}
 
+write.csv(mmr, "mouse_pca_prepped.csv")
+
 
 pc2 <- prcomp(mt[,3:length(mt)], center=T)
 pc3 <- prcomp(mt.pam50[,3:length(mt.pam50)], center=T, scale.=T)
-
-pc <- prcomp(tcga.top, center=T, scale.=T)
 
 #validation clustering
 pc.tcga <- prcomp(dplyr::select(tcga, any_of(pam50$Genes)), center=T, scale.=T)
@@ -132,10 +132,10 @@ combo <- prcomp(total[,-c(1,2)], center=T, scale.=T)
 notpam <- prcomp(dplyr::select(total[,-c(1,2)], !any_of(pam50$Genes)), center=T, scale.=T)
 
 #MMR low
-pc.mmr <- prcomp(mmr[,-c(1,2,3)], center=T, scale.=T)
-pc.mmr.pam50 <- prcomp(dplyr::select(mmr[,-c(1,2,3)], !any_of(pam50$Genes)), center=T, scale.=T)
+pc.mmr <- prcomp(mmr[,-c(1:4)], center=T, scale.=T)
+pc.mmr.pam50 <- prcomp(dplyr::select(mmr[,-c(1:4)], !any_of(pam50$Genes)), center=T, scale.=T)
 
-pc.mmr <- prcomp(dplyr::select(mmr[,-c(1,2,3)], any_of(pam50$Genes)), center=T, scale.=T)
+pc.mmr <- prcomp(dplyr::select(mmr[,-c(1:4)], any_of(pam50$Genes)), center=T, scale.=T)
 
 #plot PCA's
 ggbiplot::ggbiplot(pc3, obs.scale=1, var.scale=1, groups=mt$pam50,
@@ -175,7 +175,7 @@ ggbiplot::ggbiplot(pc.mmr, var.scale=1, groups=mmr$pam50,
 
 ggbiplot::ggbiplot(pc.mmr, var.scale=1, groups=mmr$combo,
                    ellipse=F, circle=F, ellipse.prob=0.68, var.axes=F, varname.size=0) +
-  theme_bw() + labs(title="mouse+tcga+only pam50") +
+  theme_bw() + labs(title="Only PAM50 Genes") +
   geom_point(aes(shape=mmr$type, color=mmr$combo, size=mmr$type)) +
   scale_shape_manual(values=c(3,1)) + scale_size_manual(values=c("Mouse"=5,"Human"=1))
 
@@ -190,6 +190,6 @@ ggbiplot::ggbiplot(pc.mmr.pam50, var.scale=1, groups=mmr$pam50,
 
 ggbiplot::ggbiplot(pc.mmr.pam50, var.scale=1, groups=mmr$combo,
                    ellipse=F, circle=F, ellipse.prob=0.68, var.axes=F, varname.size=0) +
-  theme_bw() + labs(title="mouse+tcga-pam50") +
+  theme_bw() + labs(title="Not PAM50 Genes") +
   geom_point(aes(shape=mmr$type, color=mmr$combo, size=mmr$type)) +
   scale_shape_manual(values=c(3,1)) + scale_size_manual(values=c("Mouse"=5,"Human"=1))
