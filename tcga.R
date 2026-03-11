@@ -122,6 +122,8 @@ ggplot(data=gdc, aes(x=MSH2_low, y=Mutations, fill=MSH2_low)) +
         plot.title=element_text(size=rel(1.5), hjust=0.5)) +
   geom_signif(comparisons=list(c("FALSE","TRUE")), annotations="n.s.", textsize=4)
 
+gdc %>% group_by(MSH2_low) %>% summarise(mean = mean(Mutations))
+
 ggsave(filename="Images/TCGA_MSH2_low.tiff", dpi=600)
 
 ##PAM50 subtypes, MLH1 vs MSH2 vs rest
