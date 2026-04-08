@@ -221,3 +221,29 @@ ggbiplot::ggbiplot(pc.total, var.scale=1, groups=total$pam50,
                  size=(total$combo == "MLH1:Basal" | total$combo == "MSH2:Lum"))) +
   scale_shape_manual(values=c("TRUE"=3,"FALSE"=1)) + scale_size_manual(values=c("TRUE"=5,"FALSE"=1)) +
   theme(legend.position="none")
+
+ggbiplot::ggbiplot(pc.total, var.scale=1, groups=k.3,
+                   ellipse=F, circle=F, var.axes=F, varname.size=0, alpha=0.4) +
+  theme_bw() + labs(title="All Patients") +
+  geom_point(aes(shape=(total$combo == "MLH1:Basal" | total$combo == "MSH2:Lum"), color=k.3,
+                 size=(total$combo == "MLH1:Basal" | total$combo == "MSH2:Lum"))) +
+  scale_shape_manual(values=c("TRUE"=3,"FALSE"=1)) + scale_size_manual(values=c("TRUE"=5,"FALSE"=1)) +
+  theme(legend.position="none")
+
+
+
+#kmeans -----
+wss <- numeric(12)
+for(i in 1:12){
+  k.out <- kmeans(total[,-c(1:4)], centers=i, nstart=20)
+  wss[i] <- k.out$tot.withinss
+}
+rm(k.out)
+wss.df <- tibble(clusters=1:12, wss=wss)
+
+ggplot(data=wss.df, aes(x=clusters, y=wss)) + geom_point() + geom_line()
+
+k.3 <- kmeans(total[,-c(1:6)], centers=3, nstart=20)$cluster
+k.3 <- as.factor(k.3)
+k.4 <- kmeans(total[,-c(1:6)], centers=4, nstart=20)$cluster
+k.4 <- as.factor(k.4)
