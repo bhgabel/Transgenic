@@ -10,6 +10,8 @@ library(biomaRt)
 mouse <- read_xlsx("~/Documents/Haricharan/Transgenic/TgMiceRNA.xlsx", sheet="zscore")
 mouse$Gene.name <- str_to_upper(mouse$Gene.name)
 pam50 <- read.csv("~/Documents/Haricharan/PAM50 gene list.csv", header=F)
+ddr <- read.csv("~/Documents/Haricharan/Transgenic/ddr_list.csv", header=F)
+ccycle <- read.csv("~/Documents/Haricharan/Transgenic/cell_cycle_list.csv", header=F)
 pam50$V1[16] <- "ORC6"
 colnames(pam50) <- "Genes"
 
@@ -131,10 +133,13 @@ pc.total <- prcomp(total[,-c(1:4)], center=T, scale.=T)
 pc.total.notpam <- prcomp(dplyr::select(total[,-c(1:4)], !any_of(pam50$Genes)), center=T, scale.=T)
 pc.total.pam <- prcomp(dplyr::select(total[,-c(1:4)], any_of(pam50$Genes)), center=T, scale.=T)
 
-#MMR low
-pc.mmr <- prcomp(dplyr::select(mmr[,-c(1:4)], !any_of(pam50$Genes)), center=T, scale.=T)
+pc.total.ddr <- prcomp(dplyr::select(total[,-(1:6)], any_of(ddr[,1])), center=T, scale.=T)
+pc.total.ccycle <- prcomp(dplyr::select(total[,-(1:6)], any_of(ccycle[,1])), center=T, scale.=T)
 
-pc.mmr.pam50 <- prcomp(dplyr::select(mmr[,-c(1:4)], any_of(pam50$Genes)), center=T, scale.=T)
+#MMR low
+pc.mmr <- prcomp(dplyr::select(mmr[,-c(1:6)], !any_of(pam50$Genes)), center=T, scale.=T)
+
+pc.mmr.pam50 <- prcomp(dplyr::select(mmr[,-c(1:6)], any_of(pam50$Genes)), center=T, scale.=T)
 
 
 #basal pt - mlh1 vs not
@@ -145,9 +150,16 @@ pc.basal <- prcomp(dplyr::select(basal[,-c(1:4)], any_of(pam50$Genes)), center=T
 
 #luminal pt - msh2 vs not
 luminal <- subset(total, (pam50 == "LumA" | pam50 == "LumB") & type != "Mouse")
-pc.luminal <- prcomp(dplyr::select(luminal[,-c(1:4)], any_of(pam50$Genes)), center=T, scale.=T)
+pc.luminal <- prcomp(dplyr::select(luminal[,-c(1:6)], any_of(pam50$Genes)), center=T, scale.=T)
+combo <- paste(luminal$MMR, luminal$pam50, sep=":")
 #all pt - msh2 + lum vs not
 
+#not basal
+not.basal <- subset(total, pam50 != "Basal")
+not.basal.mmr <- subset(not.basal, MMR != "None")
+pc.not.basal <- prcomp(not.basal[,-(1:6)], center=T, scale.=T)
+pc.not.basal <- prcomp(select(not.basal[,-(1:6)], any_of(pam50$Genes)), center=T, scale.=T)
+pc.not.basal.mmr <- prcomp(select(not.basal.mmr[,-(1:6)], any_of(pam50$Genes)), center=T, scale.=T)
 #plot PCA's
 
 #validation clustering
@@ -165,13 +177,44 @@ ggbiplot::ggbiplot(pc.total, var.scale=1, groups=total$pam50,
                    ellipse=T, circle=F, var.axes=F, varname.size=0) +
   theme_bw() + labs(title="mouse+tcga")
 
-ggbiplot::ggbiplot(pc.total.notpam, var.scale=1, groups=total$type,
+ggbiplot::ggbiplot(pc.total.pam, var.scale=1, groups=total$type,
                    ellipse=T, circle=F, var.axes=F, varname.size=0) +
   theme_bw() + labs(title="mouse+tcga - not pam50")
 
-ggbiplot::ggbiplot(pc.total.notpam, var.scale=1, groups=total$pam50,
+ggbiplot::ggbiplot(pc.total.pam, var.scale=1, groups=total$pam50,
                    ellipse=T, circle=F, var.axes=F, varname.size=0) +
   theme_bw() + labs(title="mouse+tcga")
+
+#remove basal for better clustering?
+ggbiplot::ggbiplot(pc.not.basal, var.scale=1, groups=not.basal$pam50,
+                   ellipse=T, circle=F, var.axes=F, varname.size=0) +
+  theme_bw() + labs(title="mouse+tcga")
+
+ggbiplot::ggbiplot(pc.not.basal.mmr, var.scale=1, groups=not.basal.mmr$pam50,
+                   ellipse=F, circle=F, var.axes=F, varname.size=0, alpha=0.5) +
+  theme_bw() + labs(title="TCGA+Mouse - Basal removed") +
+  geom_point(aes(shape=not.basal.mmr$type, color=not.basal.mmr$pam50, size=not.basal.mmr$type)) +
+  scale_shape_manual(values=c("Mouse"=3,"Human"=1)) + scale_size_manual(values=c("Mouse"=5,"Human"=1)) +
+  scale_color_manual(values=c("orange", "lightgreen", "cyan", "darkred", "darkgreen", "darkblue"))
+
+ggbiplot::ggbiplot(pc.luminal, var.scale=1, groups=combo,
+                   ellipse=F, circle=F, var.axes=F, varname.size=0, alpha=0) +
+  theme_bw() + labs(title="TCGA - Luminal Patients, PAM50 Genes") +
+  geom_point(aes(alpha=combo, color=combo, shape=combo)) +
+  scale_color_manual(values=c("red", "blue", "darkred", "darkblue", "pink", "lightblue")) +
+  scale_alpha_manual(values=c(0.8, 0.8, 0.8, 0.8, 0.5, 0.5), guide="none") +
+  scale_shape_manual(values=c(19,19,19,19,1,1), guide="none")
+  #geom_point(aes(shape=luminal$type, color=combo, size=luminal$type)) +
+  #scale_shape_manual(values=c("Mouse"=3,"Human"=1)) + scale_size_manual(values=c("Mouse"=5,"Human"=1))
+
+#try different gene lists
+ggbiplot::ggbiplot(pc.total.ddr, var.scale=1, groups=total$pam50,
+                   ellipse=T, circle=F, var.axes=F, varname.size=0) +
+  theme_bw() + labs(title="DNA Damage Repair Genes")
+
+ggbiplot::ggbiplot(pc.total.ccycle, var.scale=1, groups=total$pam50,
+                   ellipse=T, circle=F, var.axes=F, varname.size=0) +
+  theme_bw() + labs(title="Cell Cycle Genes")
 
 # MMR low ----
 ggbiplot::ggbiplot(pc.mmr.pam50, var.scale=1, groups=mmr$combo,
@@ -233,16 +276,18 @@ ggbiplot::ggbiplot(pc.total, var.scale=1, groups=k.3,
 
 
 #kmeans -----
-wss <- numeric(12)
-for(i in 1:12){
-  k.out <- kmeans(total[,-c(1:4)], centers=i, nstart=20)
+#plot within sum squares for each k
+wss <- numeric(6)
+for(i in 1:6){
+  k.out <- kmeans(not.basal[,-c(1:6)], centers=i, nstart=20)
   wss[i] <- k.out$tot.withinss
 }
 rm(k.out)
-wss.df <- tibble(clusters=1:12, wss=wss)
+wss.df <- tibble(clusters=1:6, wss=wss)
 
 ggplot(data=wss.df, aes(x=clusters, y=wss)) + geom_point() + geom_line()
 
+#save values at 'elbow'
 k.3 <- kmeans(total[,-c(1:6)], centers=3, nstart=20)$cluster
 k.3 <- as.factor(k.3)
 k.4 <- kmeans(total[,-c(1:6)], centers=4, nstart=20)$cluster
