@@ -1,7 +1,13 @@
 library(tidyverse)
+library(viridisLite)
 library(ggsignif)
 
 meta <- read.csv("metabric_prepped.csv")
+
+color_blind_palette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442",
+                         "#0072B2", "#D55E00", "#CC79A7", "#999999")
+
+
 
 #Plots ----
 ##Boxplots ----
@@ -42,3 +48,45 @@ ggplot(data=meta, aes(x=MSH2_low, y=Mutations, fill=MSH2_low)) +
 meta %>% group_by(MSH2_low) %>% summarise(mean = mean(Mutations, na.rm=T))
 
 ggsave(filename="Images/Metabric_MSH2_low.tiff", dpi=600)
+
+
+#relevel factor for legend order
+meta$PAM50 <- factor(meta$PAM50, levels=c("Basal", "Normal", "Her2", "LumA", "LumB"))
+
+#stacked columns - enrichment plots
+ggplot(data=subset(meta, PAM50 != "NC" & PAM50 != "claudin-low"), aes(x=MMR, fill=PAM50)) +
+  geom_bar(position="fill", stat="count") +
+  theme_classic() + labs(title="Metabric - PAM50 Subtype by Mismatch Repair Deficiency", y="Proportion") +
+  scale_x_discrete(labels=c("Low MLH1", "Low MSH2", "Rest"))
+
+percents <- data.frame(MMR=c(rep("MLH1", 5), rep("MSH2", 5), rep("None", 5)),
+                       PAM50=c(rep(c("Basal", "Normal", "Her2", "LumA", "LumB"), 3)),
+                       percent=c('37.2%', '2.94%', '19.6%', '10.3%', '29.9%', 
+                                 '10.1%', '3.88%', '20.2%', '39.5%', '26.4%',
+                                 '10.4%', '2.26%', '11.2%', '34.7%', '41.5%'))
+
+
+ggplot(data=subset(meta, PAM50 != "NA"), aes(x=MMR, fill=PAM50)) +
+  geom_bar(position="fill", stat="count", color="black") +
+  # geom_text(stat="count", position=position_fill(vjust=0.5),
+  #           aes(label=after_stat(count)), color="white") +
+  theme_classic() + labs(title="Metabric - PAM50 Subtype by Mismatch Repair Deficiency",
+                         y="Percentage", x=NULL) +
+  scale_x_discrete(labels=c("Low MLH1", "Low MSH2", "Rest")) +
+  scale_fill_manual(values=c('#E3E418', '#27AD81', '#31688E', '#443A83','#471164')) +
+  scale_y_continuous(expand=c(0,0), labels=c("0%", "25%", "50%", "75%", "100%")) +
+  theme(axis.text.x=element_text(size=rel(1.5)),
+        axis.text.y=element_text(size=rel(1.3)),
+        axis.title.y=element_text(size=rel(1.5)),
+        plot.title=element_text(size=rel(1.5), hjust=0.3),
+        legend.text=element_text(size=rel(1.2)),
+        legend.title=element_text(size=rel(1.3)))
+
+ggsave(filename="Images/Metabric_enrichment.tiff", dpi=600)
+
+#stats for above plots
+table(meta$PAM50, meta$MMR)
+round(proportions(table(meta$PAM50, meta$MMR), margin=2)*100, digits=1)
+chisq.test(table(meta$PAM50, meta$MMR), simulate.p.value=T)
+chisq.test(table(meta$PAM50 == "Basal", meta$MMR == "MLH1"))
+chisq.test(table((meta$PAM50 == "LumA" | meta$PAM50 == "LumB"), meta$MMR == "MSH2"))

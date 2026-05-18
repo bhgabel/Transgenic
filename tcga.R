@@ -263,6 +263,34 @@ ggplot(data=gdc, aes(x=HR, fill=MSI)) +
   geom_bar(position="fill", stat="count") +
   theme_classic() + labs(title="MSI Classification")
 
+#relevel factor for legend order
+gdc$PAM50 <- factor(gdc$PAM50, levels=c("Basal", "Normal", "Her2", "LumA", "LumB"))
+
+#enrichment plot
+ggplot(data=subset(gdc, PAM50 != "NA"), aes(x=MMR, fill=PAM50)) +
+  geom_bar(position="fill", stat="count", color="black") +
+  # geom_text(stat="count", position=position_fill(vjust=0.5),
+  #           aes(label=after_stat(count)), color="white") +
+  theme_classic() + labs(title="TCGA - PAM50 Subtype by Mismatch Repair Deficiency",
+                         y="Percentage", x=NULL) +
+  scale_x_discrete(labels=c("Low MLH1", "Low MSH2", "Rest")) +
+  scale_fill_manual(values=c('#E3E418', '#27AD81', '#31688E', '#443A83','#471164')) +
+  scale_y_continuous(expand=c(0,0), labels=c("0%", "25%", "50%", "75%", "100%")) +
+  theme(axis.text.x=element_text(size=rel(1.5)),
+        axis.text.y=element_text(size=rel(1.3)),
+        axis.title.y=element_text(size=rel(1.5)),
+        plot.title=element_text(size=rel(1.5), hjust=0.3),
+        legend.text=element_text(size=rel(1.2)),
+        legend.title=element_text(size=rel(1.3)))
+
+ggsave(filename="Images/TCGA_enrichment.tiff", dpi=600)
+
+#stats for above plots
+table(gdc$PAM50, gdc$MMR)
+round(proportions(table(gdc$PAM50, gdc$MMR), margin=2)*100, digits=1)
+chisq.test(table(gdc$PAM50, gdc$MMR), simulate.p.value=T)
+chisq.test(table(gdc$PAM50 == "Basal", gdc$MMR == "MLH1"))
+chisq.test(table((gdc$PAM50 == "LumA" | gdc$PAM50 == "LumB"), gdc$MMR == "MSH2"))
 
 #MSI by subtype
 ggplot(data=subset(gdc, HR == 'HR+/HER2+'), aes(x=MMR, fill=MSI)) +

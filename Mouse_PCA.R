@@ -145,12 +145,13 @@ pc.mmr.pam50 <- prcomp(dplyr::select(mmr[,-c(1:6)], any_of(pam50$Genes)), center
 #basal pt - mlh1 vs not
 basal <- subset(total, pam50 == "Basal" & type != "Mouse")
 basal <- add_column(basal, id = row_number(basal$type), .before=1)
-pc.basal <- prcomp(dplyr::select(basal[,-c(1:4)], any_of(pam50$Genes)), center=T, scale.=T)
+pc.basal <- prcomp(dplyr::select(basal[,-c(1:6)], any_of(pam50$Genes)), center=T, scale.=T)
 #all pt - mlh1 + basal vs not
 
 #luminal pt - msh2 vs not
 luminal <- subset(total, (pam50 == "LumA" | pam50 == "LumB") & type != "Mouse")
 pc.luminal <- prcomp(dplyr::select(luminal[,-c(1:6)], any_of(pam50$Genes)), center=T, scale.=T)
+pc.luminal.notpam <- prcomp(dplyr::select(luminal[,-c(1:6)], !any_of(pam50$Genes)), center=T, scale.=T)
 combo <- paste(luminal$MMR, luminal$pam50, sep=":")
 #all pt - msh2 + lum vs not
 
@@ -185,27 +186,52 @@ ggbiplot::ggbiplot(pc.total.pam, var.scale=1, groups=total$pam50,
                    ellipse=T, circle=F, var.axes=F, varname.size=0) +
   theme_bw() + labs(title="mouse+tcga")
 
+ggbiplot::ggbiplot(pc.mmr.pam50, var.scale=1, groups=mmr$pam50,
+                   ellipse=F, circle=F, var.axes=F, varname.size=0, alpha=0.2) +
+  theme_bw() + labs(title="TCGA+Mice PAM50 Genes") +
+  geom_point(aes(color=mmr$pam50, shape=mmr$type, size=mmr$type)) +
+  scale_shape_manual(values=c("Mouse"=3,"Human"=19)) +
+  scale_size_manual(values=c("Mouse"=5,"Human"=1))
+  #scale_color_manual(values=c("red", "blue", "darkred", "darkblue", "pink", "lightblue"))
+
+
+
 #remove basal for better clustering?
 ggbiplot::ggbiplot(pc.not.basal, var.scale=1, groups=not.basal$pam50,
                    ellipse=T, circle=F, var.axes=F, varname.size=0) +
   theme_bw() + labs(title="mouse+tcga")
 
 ggbiplot::ggbiplot(pc.not.basal.mmr, var.scale=1, groups=not.basal.mmr$pam50,
-                   ellipse=F, circle=F, var.axes=F, varname.size=0, alpha=0.5) +
+                   ellipse=F, circle=F, var.axes=F, varname.size=0, alpha=0) +
   theme_bw() + labs(title="TCGA+Mouse - Basal removed") +
+  geom_point(aes(color=not.basal.mmr$pam50)) +
+  theme(legend.text=element_text(size=rel(1.1)),
+        legend.title=element_text(size=rel(1.1))) +
+  scale_color_hue(h.start=30) +
   geom_point(aes(shape=not.basal.mmr$type, color=not.basal.mmr$pam50, size=not.basal.mmr$type)) +
-  scale_shape_manual(values=c("Mouse"=3,"Human"=1)) + scale_size_manual(values=c("Mouse"=5,"Human"=1)) +
-  scale_color_manual(values=c("orange", "lightgreen", "cyan", "darkred", "darkgreen", "darkblue"))
+  scale_shape_manual(values=c("Mouse"=3,"Human"=1)) + scale_size_manual(values=c("Mouse"=5,"Human"=1))
 
 ggbiplot::ggbiplot(pc.luminal, var.scale=1, groups=combo,
                    ellipse=F, circle=F, var.axes=F, varname.size=0, alpha=0) +
   theme_bw() + labs(title="TCGA - Luminal Patients, PAM50 Genes") +
   geom_point(aes(alpha=combo, color=combo, shape=combo)) +
-  scale_color_manual(values=c("red", "blue", "darkred", "darkblue", "pink", "lightblue")) +
-  scale_alpha_manual(values=c(0.8, 0.8, 0.8, 0.8, 0.5, 0.5), guide="none") +
-  scale_shape_manual(values=c(19,19,19,19,1,1), guide="none")
+  scale_color_manual(values=c("red", "blue", "darkred", "green3", "pink", "lightblue")) +
+  scale_alpha_manual(values=c(0.8, 0.8, 0.8, 0.8, 0.6, 0.6), guide="none") +
+  scale_shape_manual(values=c(19,19,19,19,1,1), guide="none") +
+  labs(color="MMR:PAM50") +
+  theme(legend.text=element_text(size=rel(1.1)),
+        legend.title=element_text(size=rel(1.1)))
+  
   #geom_point(aes(shape=luminal$type, color=combo, size=luminal$type)) +
   #scale_shape_manual(values=c("Mouse"=3,"Human"=1)) + scale_size_manual(values=c("Mouse"=5,"Human"=1))
+
+ggbiplot::ggbiplot(pc.luminal.notpam, var.scale=1, groups=combo,
+                   ellipse=F, circle=F, var.axes=F, varname.size=0, alpha=0) +
+  theme_bw() + labs(title="TCGA - Luminal Patients, Not PAM50 Genes") +
+  geom_point(aes(alpha=combo, color=combo, shape=combo)) +
+  scale_color_manual(values=c("red", "blue", "darkred", "green", "pink", "lightblue")) +
+  scale_alpha_manual(values=c(0.8, 0.8, 0.8, 0.8, 0.5, 0.5), guide="none") +
+  scale_shape_manual(values=c(19,19,19,19,1,1), guide="none")
 
 #try different gene lists
 ggbiplot::ggbiplot(pc.total.ddr, var.scale=1, groups=total$pam50,
@@ -217,10 +243,10 @@ ggbiplot::ggbiplot(pc.total.ccycle, var.scale=1, groups=total$pam50,
   theme_bw() + labs(title="Cell Cycle Genes")
 
 # MMR low ----
-ggbiplot::ggbiplot(pc.mmr.pam50, var.scale=1, groups=mmr$combo,
+ggbiplot::ggbiplot(pc.mmr.pam50, var.scale=1, groups=mmr$pam50,
                    ellipse=F, circle=F, var.axes=F, varname.size=0) +
   theme_bw() + labs(title="Only PAM50 Genes") +
-  geom_point(aes(shape=mmr$type, color=mmr$combo, size=mmr$type)) +
+  geom_point(aes(shape=mmr$type, color=mmr$pam50, size=mmr$type)) +
   scale_shape_manual(values=c(3,1)) + scale_size_manual(values=c("Mouse"=5,"Human"=1))
 
 #exclude pam50 genes
@@ -235,6 +261,15 @@ ggbiplot::ggbiplot(pc.basal, var.scale=1, groups=basal$MMR,
          ellipse=F, circle=F, var.axes=F, varname.size=0) +
   theme_bw() + labs(title="Basal Patients - Only PAM50") +
   scale_color_manual(values=c("None"="grey", "MLH1"="red", "MSH2"="blue"), labels=c("None"="Rest"))
+
+ggbiplot::ggbiplot(pc.basal, var.scale=1, groups=basal$combo,
+                   ellipse=F, circle=F, var.axes=F, varname.size=0, alpha=0) +
+  geom_point(aes(color=basal$combo)) +
+  theme_bw() + labs(title="TCGA - Basal Patients, PAM50 Genes") +
+  scale_color_manual(values=c("red", "blue", "grey")) +
+  labs(color="MMR:PAM50") +
+  theme(legend.text=element_text(size=rel(1.1)),
+        legend.title=element_text(size=rel(1.1)))
 
 #basal + mlh1 vs rest
 ggbiplot::ggbiplot(pc.total, var.scale=1, groups=(total$combo == "MLH1:Basal"),
@@ -292,3 +327,20 @@ k.3 <- kmeans(total[,-c(1:6)], centers=3, nstart=20)$cluster
 k.3 <- as.factor(k.3)
 k.4 <- kmeans(total[,-c(1:6)], centers=4, nstart=20)$cluster
 k.4 <- as.factor(k.4)
+
+
+#rda ----
+pam <- select(total, any_of(pam50$Genes))
+mismatch <- select(total, any_of(c("MMR", "pam50", "MLH1", "MSH2")))
+
+test <- select(total, "pam50", any_of(pam50$Genes))
+
+manova(test[,-1] ~ test$pam50)
+
+rda <- rda(pam~MLH1+MSH2, data=mismatch)
+anova(rda)
+anova(rda, by="term")
+rda2 <- rda(pam~MMR+pam50, data=mismatch)
+anova(rda2)
+anova(rda2, by="term")
+plot(rda, scaling=2,display = c('sites','species','bp'))
