@@ -91,37 +91,67 @@ table(meta$PAM50, meta$MMR)
 round(proportions(table(meta$PAM50, meta$MMR), margin=2)*100, digits=1)
 chisq.test(table(meta$PAM50, meta$MMR), simulate.p.value=T)
 chisq.test(table(meta$PAM50 == "Basal", meta$MMR == "MLH1"))
-chisq.test(table((meta$PAM50 == "LumA" | meta$PAM50 == "LumB"), meta$MMR == "MSH2"))
+chisq.test(table(meta$PAM50 == "LumA", meta$MMR == "MSH2"))
 
 #Survival plots ----
-colnames(meta)[c(61,62)] <- c("Surv.Status", "Surv.Months")
-meta$Surv.Status.l <- ifelse(meta$Surv.Status == "0:LIVING", 0, 1)
-fit <- survfit(Surv(Surv.Months, Surv.Status.l) ~ MLH1_low,
+colnames(meta)[c(61,62)] <- c("Surv.Status", "Relapse.Months")
+meta$Relapse.Status.l <- ifelse(meta$Relapse.Status == "0:Not Recurred", 0, 1)
+meta$Relapse.Months <- meta$Relapse.Months/12 #years for plotting
+
+#MLH1
+fit <- survfit(Surv(Relapse.Months, Relapse.Status.l) ~ MLH1_low,
                data=subset(meta, HR == "HR+/HER2+"))
 ggsurvplot(fit, data=subset(meta, HR == "HR+/HER2+"), pval=T,
-           xlim=c(0,130), title="Metabric - HR+/HER2+")
+           xlim=c(0,10), xlab="Time (Years)", break.time.by=1,
+           legend.labs=c("Normal", "Low MLH1"), font.legend=c(13),
+           legend.title="", surv.scale="percent",
+           title="Metabric (HR+/HER2+)", palette=c("black", "#31688E"))$plot +
+  theme(plot.title = element_text(hjust=0.5, size=16))
 
-fit <- survfit(Surv(Surv.Months, Surv.Status.l) ~ MLH1_low,
+fit <- survfit(Surv(Relapse.Months, Relapse.Status.l) ~ MLH1_low,
                data=subset(meta, HR == "HR+/HER2-"))
 ggsurvplot(fit, data=subset(meta, HR == "HR+/HER2-"), pval=T,
-           xlim=c(0,130), title="Metabric - HR+/HER2-")
+           xlim=c(0,10), xlab="Time (Years)", break.time.by=1,
+           legend.labs=c("Normal", "Low MLH1"), font.legend=c(13),
+           legend.title="", surv.scale="percent",
+           title="Metabric (HR+/HER2-)", palette=c("black", "#31688E"))$plot +
+  theme(plot.title = element_text(hjust=0.5, size=16))
 
-fit <- survfit(Surv(Surv.Months, Surv.Status.l) ~ MLH1_low,
+fit <- survfit(Surv(Relapse.Months, Relapse.Status.l) ~ MLH1_low,
                data=subset(meta, HR == "TNBC"))
 ggsurvplot(fit, data=subset(meta, HR == "TNBC"), pval=T,
-           xlim=c(0,130), title="Metabric - TNBC")
+           xlim=c(0,10), xlab="Time (Years)", break.time.by=1,
+           legend.labs=c("Normal", "Low MLH1"), font.legend=c(13),
+           legend.title="", surv.scale="percent",
+           title="Metabric (TNBC)", palette=c("black", "#31688E"))$plot +
+  theme(plot.title = element_text(hjust=0.5, size=16))
 
-fit <- survfit(Surv(Surv.Months, Surv.Status.l) ~ MSH2_low,
+#MSH2
+fit <- survfit(Surv(Relapse.Months, Relapse.Status.l) ~ MSH2_low,
                data=subset(meta, HR == "HR+/HER2+"))
 ggsurvplot(fit, data=subset(meta, HR == "HR+/HER2+"), pval=T,
-           xlim=c(0,130), title="Metabric - HR+/HER2+")
+           xlim=c(0,10), xlab="Time (Years)", break.time.by=1,
+           legend.labs=c("Normal", "Low MSH2"), font.legend=c(13),
+           legend.title="", surv.scale="percent",
+           title="Metabric (HR+/HER2+)", palette=c("black", "#E3E418"))$plot +
+  theme(plot.title = element_text(hjust=0.5, size=16))
 
-fit <- survfit(Surv(Surv.Months, Surv.Status.l) ~ MSH2_low,
+fit <- survfit(Surv(Relapse.Months, Relapse.Status.l) ~ MSH2_low,
                data=subset(meta, HR == "HR+/HER2-"))
 ggsurvplot(fit, data=subset(meta, HR == "HR+/HER2-"), pval=T,
-           xlim=c(0,130), title="Metabric - HR+/HER2-")
+           xlim=c(0,10), xlab="Time (Years)", break.time.by=1,
+           legend.labs=c("Normal", "Low MSH2"), font.legend=c(13),
+           legend.title="", surv.scale="percent",
+           title="Metabric (HR+/HER2-)", palette=c("black", "#E3E418"))$plot +
+  theme(plot.title = element_text(hjust=0.5, size=16))
 
-fit <- survfit(Surv(Surv.Months, Surv.Status.l) ~ MSH2_low,
+fit <- survfit(Surv(Relapse.Months, Relapse.Status.l) ~ MSH2_low,
                data=subset(meta, HR == "TNBC"))
 ggsurvplot(fit, data=subset(meta, HR == "TNBC"), pval=T,
-           xlim=c(0,130), title="Metabric - TNBC")
+           xlim=c(0,10), xlab="Time (Years)", break.time.by=1,
+           legend.labs=c("Normal", "Low MSH2"), font.legend=c(13),
+           legend.title="", surv.scale="percent",
+           title="Metabric (TNBC)", palette=c("black", "#E3E418"))$plot +
+  theme(plot.title = element_text(hjust=0.5, size=16))
+
+ggsave(filename="Images/Metabric_survival_MSH2_TNBC.tiff", dpi=600)

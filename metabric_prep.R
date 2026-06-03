@@ -14,9 +14,10 @@ remove(mrna, clinical)
 
 meta <- dplyr::select(meta, c(2:54, "Mutation Count", "Pam50 + Claudin-low subtype",
                        "ER Status", "HER2 Status", "PR Status", "TMB (nonsynonymous)",
-                       "Overall Survival Status", "Overall Survival (Months)"))
+                       "Relapse Free Status", "Relapse Free Status (Months)"))
 
-colnames(meta)[c(1, 54:59)] <- c("Sample ID", "Mutations", "Pam50", "ER", "HER2", "PR", "TMB")
+colnames(meta)[c(1, 54:61)] <- c("Sample ID", "Mutations", "Pam50", "ER", "HER2",
+                                 "PR", "TMB", "Relapse.Status", "Relapse.Months")
 
 # Establish factors
 #MMR low
@@ -70,9 +71,8 @@ for(i in 1:length(meta$Pam50)){
 
 #reclassify pam50 without claudin-low type
 data("pam50.robust")
-pam50 <- read.csv("pam50_gene_list.csv")
-colnames(pam50)[1] <- "Genes"
-gene_info <- left_join(pam50, pam50.robust$centroids.map[c(1,3)], by=c("Genes"="probe"))
+gene_info <- read.csv("pam50_gene_list.csv")
+meta <- rename(meta, all_of(c("CDCA1" = "NUF2", "KNTC2" = "NDC80", "ORC6L" = "ORC6")))
 pam50.pred <- molecular.subtyping(sbt.model = "pam50", data = meta[,c(4:53)],
                                   annot = gene_info, do.mapping = TRUE)
 

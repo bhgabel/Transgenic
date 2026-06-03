@@ -114,7 +114,7 @@ ggplot(data=gdc, aes(x=MSH2_low, y=Mutations, fill=MSH2_low)) +
   geom_boxplot() + scale_y_continuous(trans="log10") +
   theme_classic() + scale_x_discrete(labels=c("FALSE"="Normal", "TRUE"="Low (<8%)")) +
   labs(x="MSH2 Gene Expression", y="Mutation Count (log10)", title="Tumor Mutation Burden - TCGA") +
-  scale_fill_discrete(guide="none", palette=c("grey", "yellow3")) +
+  scale_fill_discrete(guide="none", palette=c("grey", "#E3E418")) +
   theme(axis.text.x=element_text(size=rel(1.5)),
         axis.title.x=element_text(size=rel(1.5)),
         axis.title.y=element_text(size=rel(1.5)),
@@ -291,7 +291,7 @@ table(gdc$PAM50, gdc$MMR)
 round(proportions(table(gdc$PAM50, gdc$MMR), margin=2)*100, digits=1)
 chisq.test(table(gdc$PAM50, gdc$MMR), simulate.p.value=T)
 chisq.test(table(gdc$PAM50 == "Basal", gdc$MMR == "MLH1"))
-chisq.test(table((gdc$PAM50 == "LumA" | gdc$PAM50 == "LumB"), gdc$MMR == "MSH2"))
+chisq.test(table(gdc$PAM50 == "LumA", gdc$MMR == "MSH2"))
 
 #MSI by subtype
 ggplot(data=subset(gdc, HR == 'HR+/HER2+'), aes(x=MMR, fill=MSI)) +
@@ -321,32 +321,62 @@ ggplot(data=gdc, aes(x=pam50_f, fill=MSI)) +
 
 #Survival plots ----
 gdc$Disease.Status.l <- ifelse(gdc$Disease.Free.Status == "0:DiseaseFree", 0, 1)
+gdc$Disease.Free.Months <- gdc$Disease.Free.Months/12 #years for plotting
+
+#MLH1
 fit <- survfit(Surv(Disease.Free.Months, Disease.Status.l) ~ MLH1_low,
                data=subset(gdc, HR == "HR+/HER2+"))
 ggsurvplot(fit, data=subset(gdc, HR == "HR+/HER2+"), pval=T,
-           xlim=c(0,130), title="TCGA - HR+/HER2+")
+           xlim=c(0,10), xlab="Time (Years)", break.time.by=1,
+           legend.labs=c("Normal", "Low MLH1"), font.legend=c(13),
+           legend.title="", surv.scale="percent",
+           title="TCGA (HR+/HER2+)", palette=c("black", "#31688E"))$plot +
+  theme(plot.title = element_text(hjust=0.5, size=16))
 
 fit <- survfit(Surv(Disease.Free.Months, Disease.Status.l) ~ MLH1_low,
                data=subset(gdc, HR == "HR+/HER2-"))
 ggsurvplot(fit, data=subset(gdc, HR == "HR+/HER2-"), pval=T,
-           xlim=c(0,130), title="TCGA - HR+/HER2-")
+           xlim=c(0,10), xlab="Time (Years)", break.time.by=1,
+           legend.labs=c("Normal", "Low MLH1"), font.legend=c(13),
+           legend.title="", surv.scale="percent",
+           title="TCGA (HR+/HER2-)", palette=c("black", "#31688E"))$plot +
+  theme(plot.title = element_text(hjust=0.5, size=16))
 
 fit <- survfit(Surv(Disease.Free.Months, Disease.Status.l) ~ MLH1_low,
                data=subset(gdc, HR == "TNBC"))
 ggsurvplot(fit, data=subset(gdc, HR == "TNBC"), pval=T,
-           xlim=c(0,130), title="TCGA - TNBC")
+           xlim=c(0,10), xlab="Time (Years)", break.time.by=1,
+           legend.labs=c("Normal", "Low MLH1"), font.legend=c(13),
+           legend.title="", surv.scale="percent",
+           title="TCGA (TNBC)", palette=c("black", "#31688E"))$plot +
+  theme(plot.title = element_text(hjust=0.5, size=16))
 
+#MSH2
 fit <- survfit(Surv(Disease.Free.Months, Disease.Status.l) ~ MSH2_low,
                data=subset(gdc, HR == "HR+/HER2+"))
 ggsurvplot(fit, data=subset(gdc, HR == "HR+/HER2+"), pval=T,
-           xlim=c(0,130), title="TCGA - HR+/HER2+")
+           xlim=c(0,10), xlab="Time (Years)", break.time.by=1,
+           legend.labs=c("Normal", "Low MSH2"), font.legend=c(13),
+           legend.title="", surv.scale="percent",
+           title="TCGA (HR+/HER2+)", palette=c("black", "#E3E418"))$plot +
+  theme(plot.title = element_text(hjust=0.5, size=16))
 
 fit <- survfit(Surv(Disease.Free.Months, Disease.Status.l) ~ MSH2_low,
                data=subset(gdc, HR == "HR+/HER2-"))
 ggsurvplot(fit, data=subset(gdc, HR == "HR+/HER2-"), pval=T,
-           xlim=c(0,130), title="TCGA - HR+/HER2-")
+           xlim=c(0,10), xlab="Time (Years)", break.time.by=1,
+           legend.labs=c("Normal", "Low MSH2"), font.legend=c(13),
+           legend.title="", surv.scale="percent",
+           title="TCGA (HR+/HER2-)", palette=c("black", "#E3E418"))$plot +
+  theme(plot.title = element_text(hjust=0.5, size=16))
 
 fit <- survfit(Surv(Disease.Free.Months, Disease.Status.l) ~ MSH2_low,
                data=subset(gdc, HR == "TNBC"))
 ggsurvplot(fit, data=subset(gdc, HR == "TNBC"), pval=T,
-           xlim=c(0,130), title="TCGA - TNBC")
+           xlim=c(0,10), xlab="Time (Years)", break.time.by=1,
+           legend.labs=c("Normal", "Low MSH2"), font.legend=c(13),
+           legend.title="", surv.scale="percent",
+           title="TCGA (TNBC)", palette=c("black", "#E3E418"))$plot +
+  theme(plot.title = element_text(hjust=0.5, size=16))
+
+ggsave(filename="Images/TCGA_survival_MSH2_TNBC.tiff", dpi=600)
