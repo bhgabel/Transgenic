@@ -210,7 +210,8 @@ gdc %>% group_by(MMR, HR) %>%
 
 ggplot(data=gdc, aes(x=HR, y=MANTIS)) +
   geom_boxplot() + theme_classic() + labs(title="MANTIS Scores") +
-  ylim(0.2, 0.5) + facet_grid(MMR ~ .) + geom_hline(yintercept=0.4, linetype="dashed")
+  ylim(0.2, 0.5) + facet_grid(MMR ~ .) +
+  geom_hline(yintercept=0.4, linetype="dashed")
 
 ggplot(data=gdc, aes(x=MSI, y=Mutations, fill=MSI)) +
   geom_boxplot() + scale_y_continuous(trans="log10") +
@@ -317,25 +318,35 @@ ggplot(data=gdc, aes(x=pam50_f, fill=MSI)) +
   geom_bar(position="fill", stat="count") + facet_grid(MMR ~ .) +
   theme_classic() + labs(title="MSI by HR and MMR low")
 
-#CIN
-ggplot(data=subset(gdc, CIN_f != 'NA'), aes(x=CIN_f, fill=MMR)) +
-  geom_bar(position="fill", stat="count") +
-  theme_classic() + labs(title="Low mRNA Expression")
 
-ggplot(data=subset(gdc, CIN_f != 'NA'), aes(x=HR, fill=CIN_f)) +
-  geom_bar(position="fill", stat="count") +
-  theme_classic() + labs(title="Low mRNA Expression")
+#Survival plots ----
+gdc$Disease.Status.l <- ifelse(gdc$Disease.Free.Status == "0:DiseaseFree", 0, 1)
+fit <- survfit(Surv(Disease.Free.Months, Disease.Status.l) ~ MLH1_low,
+               data=subset(gdc, HR == "HR+/HER2+"))
+ggsurvplot(fit, data=subset(gdc, HR == "HR+/HER2+"), pval=T,
+           xlim=c(0,130), title="TCGA - HR+/HER2+")
 
-ggplot(data=subset(gdc, CIN_f != 'NA'), aes(x=HR, fill=CIN_f)) +
-  geom_bar(position="fill", stat="count") + facet_grid(MMR ~ .) +
-  theme_classic() + labs(title="CIN by HR and MMR low")
+fit <- survfit(Surv(Disease.Free.Months, Disease.Status.l) ~ MLH1_low,
+               data=subset(gdc, HR == "HR+/HER2-"))
+ggsurvplot(fit, data=subset(gdc, HR == "HR+/HER2-"), pval=T,
+           xlim=c(0,130), title="TCGA - HR+/HER2-")
 
-# mutations < 100 just to visualize data since range too wide
-ggplot(data=subset(gdc, Mutations <= 100 & !is.na(CX1)), aes(x=CX1, y=Mutations)) +
-  geom_point() + geom_smooth(method='lm', se=F)
+fit <- survfit(Surv(Disease.Free.Months, Disease.Status.l) ~ MLH1_low,
+               data=subset(gdc, HR == "TNBC"))
+ggsurvplot(fit, data=subset(gdc, HR == "TNBC"), pval=T,
+           xlim=c(0,130), title="TCGA - TNBC")
 
-ggplot(data=subset(gdc, Mutations <= 100), aes(x=FGA, y=Mutations)) +
-  geom_point() + geom_smooth(method='lm', se=F)
+fit <- survfit(Surv(Disease.Free.Months, Disease.Status.l) ~ MSH2_low,
+               data=subset(gdc, HR == "HR+/HER2+"))
+ggsurvplot(fit, data=subset(gdc, HR == "HR+/HER2+"), pval=T,
+           xlim=c(0,130), title="TCGA - HR+/HER2+")
 
-ggplot(data=subset(gdc, !is.na(CX1)), aes(x=CX1, y=FGA)) + geom_point() + geom_smooth(method='lm', se=F)
+fit <- survfit(Surv(Disease.Free.Months, Disease.Status.l) ~ MSH2_low,
+               data=subset(gdc, HR == "HR+/HER2-"))
+ggsurvplot(fit, data=subset(gdc, HR == "HR+/HER2-"), pval=T,
+           xlim=c(0,130), title="TCGA - HR+/HER2-")
 
+fit <- survfit(Surv(Disease.Free.Months, Disease.Status.l) ~ MSH2_low,
+               data=subset(gdc, HR == "TNBC"))
+ggsurvplot(fit, data=subset(gdc, HR == "TNBC"), pval=T,
+           xlim=c(0,130), title="TCGA - TNBC")

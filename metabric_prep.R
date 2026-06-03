@@ -2,7 +2,7 @@ library(readr)
 library(tidyverse)
 library(genefu)
 
-mrna <- read_delim("Metabric mRNA expression z-scores relative to all samples (log microarray).txt", 
+mrna <- read_delim("Metabric mRNA expression z-scores relative to all samples (log microarray).txt",
                    delim = "\t", escape_double = FALSE, trim_ws = TRUE)
 
 clinical <- read_delim("metabric_clinical_data.tsv", delim = "\t", escape_double = FALSE, 
@@ -13,7 +13,8 @@ meta <- left_join(mrna, clinical, by=c("SAMPLE_ID" = "Sample ID"))
 remove(mrna, clinical)
 
 meta <- dplyr::select(meta, c(2:54, "Mutation Count", "Pam50 + Claudin-low subtype",
-                       "ER Status", "HER2 Status", "PR Status", "TMB (nonsynonymous)"))
+                       "ER Status", "HER2 Status", "PR Status", "TMB (nonsynonymous)",
+                       "Overall Survival Status", "Overall Survival (Months)"))
 
 colnames(meta)[c(1, 54:59)] <- c("Sample ID", "Mutations", "Pam50", "ER", "HER2", "PR", "TMB")
 
@@ -70,6 +71,7 @@ for(i in 1:length(meta$Pam50)){
 #reclassify pam50 without claudin-low type
 data("pam50.robust")
 pam50 <- read.csv("pam50_gene_list.csv")
+colnames(pam50)[1] <- "Genes"
 gene_info <- left_join(pam50, pam50.robust$centroids.map[c(1,3)], by=c("Genes"="probe"))
 pam50.pred <- molecular.subtyping(sbt.model = "pam50", data = meta[,c(4:53)],
                                   annot = gene_info, do.mapping = TRUE)

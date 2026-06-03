@@ -12,7 +12,9 @@ mrna <- read_delim("pam50 mRNA expression fpkm Zscores.tsv",
 #Clinical info
 clinical <- read_delim("brca_tcga_gdc_clinical_data.tsv", 
                        delim = "\t", escape_double = FALSE, trim_ws = TRUE) %>%
-  dplyr::select(c("Patient ID", "Sample ID", "Mutation Count", "Fraction Genome Altered"))
+  dplyr::select(c("Patient ID", "Sample ID", "Mutation Count", "Fraction Genome Altered",
+                  "Disease Free (Months)","Disease Free Status", "Overall Survival (Months)",
+                  "Overall Survival Status"))
 
 #HR status                          
 firehose <- read_excel("~/Documents/Haricharan/PanCancer/TCGA_Firehose.xlsx", sheet = "Clinical") %>% 
@@ -31,17 +33,6 @@ gdc <- left_join(gdc, mantis, by=c("Patient ID" = "Case ID"))
 
 gdc <- left_join(gdc, firehose)
 
-#Add CIN data
-CIN_data <- read_excel("CIN_data.xlsx", sheet = "ST_20_TCGA_Activities_scaled")
-colnames(CIN_data)[1] <- 'Patient ID'
-
-gdc <- left_join(gdc, CIN_data[c('Patient ID', 'Total', 'CX1', 'CX6')])
-
-
-# gene_info <- data.frame(colnames(firehose)[-c(1:5)], pam50$centroids.map$EntrezGene.ID)
-# colnames(gene_info) <- c("probe", "EntrezGene.ID")
-# 
-# pam50_pred <- molecular.subtyping(sbt.model="pam50", data=firehose, annot=gene_info, do.mapping=T, verbose=T)
 
 #Pull pam50 subtypes from TCGA package
 subtypes <- TCGAquery_subtype("brca") %>% dplyr::select(c("patient", "BRCA_Subtype_PAM50"))
@@ -50,7 +41,10 @@ subtypes <- TCGAquery_subtype("brca") %>% dplyr::select(c("patient", "BRCA_Subty
 gdc <- left_join(gdc, subtypes, by=c("Patient ID" = "patient"))
 
 #Rename columns
-colnames(gdc) <- c('Patient ID', 'Sample ID', 'Mutations', 'FGA', 'MLH1', 'MSH2', 'MANTIS', 'ER', 'HER2', 'PR', 'CIN', 'CX1', 'CX6', 'PAM50')
+colnames(gdc) <- c('Patient ID', 'Sample ID', 'Mutations', 'FGA',
+                   'Disease.Free.Months', 'Disease.Free.Status', 'Overall.Months',
+                   'Overall.Status', 'MLH1', 'MSH2', 'MANTIS', 'ER', 'HER2',
+                   'PR', 'PAM50')
 
 #remove primary data frames, since everything joined into gdc
 remove(list = c('CIN_data', 'clinical', 'firehose', 'mantis', 'mrna', 'mrna_pam50', 'subtypes'))
@@ -76,9 +70,6 @@ gdc <- drop_na(gdc, "MLH1", "MSH2", "Mutations")
 #Assign factors for low gene expression and remove combined loss
 gdc$MLH1_low <- (gdc$MLH1 <= quantile(gdc$MLH1, probs=0.12, na.rm=T))
 gdc$MSH2_low <- (gdc$MSH2 <= quantile(gdc$MSH2, probs=0.08, na.rm=T))
-gdc$p53_low <- (gdc$p53 <= quantile(gdc$p53, probs=0.5, na.rm=T))
-gdc$ERBB2_low <- (gdc$ERBB2 <= quantile(gdc$ERBB2, probs=0.5, na.rm=T))
-gdc$ESR1_low <- (gdc$ESR1 <= quantile(gdc$ESR1, probs=0.5, na.rm=T))
 gdc$MMR <- factor("None", levels=c("MLH1", "MSH2", "None"))
 for(i in 1:length(gdc$MMR)){
   if(gdc$MLH1_low[[i]] && gdc$MSH2_low[[i]]){
@@ -150,32 +141,6 @@ for(i in 1:length(gdc$HR)){
     gdc$HR[[i]] <- 'HR+/HER2+'
   } else{
     gdc$HR[[i]] <- 'HR-/HER2+'
-  }
-}
-
-#CIN factor using CX1 metric, high cutoff = ? 0.6584 is total 75 percentile
-gdc$CIN_fga <- factor('NA', levels=c('CIN Low', 'CIN High', 'NA'))
-gdc$CIN_cx1 <- factor('NA', levels=c('CIN Low', 'CIN High', 'NA'))
-FGA_prob <- quantile(gdc$FGA, probs=0.75, na.rm=T)
-CX1_prob <- quantile(gdc$CX1, probs=0.75, na.rm=T)
-#FGA
-for(i in 1:length(gdc$`Patient ID`)){
-  if(is.na(gdc$FGA[[i]])){
-    gdc$CIN_fga[[i]] <- 'NA'
-  } else if(gdc$FGA[[i]] > FGA_prob){
-    gdc$CIN_fga[[i]] <- 'CIN High'
-  } else{
-    gdc$CIN_fga[[i]] <- 'CIN Low'
-  }
-}
-#CX1
-for(i in 1:length(gdc$`Patient ID`)){
-  if(is.na(gdc$CX1[[i]])){
-    gdc$CIN_cx1[[i]] <- 'NA'
-  } else if(gdc$CX1[[i]] > CX1_prob){
-    gdc$CIN_cx1[[i]] <- 'CIN High'
-  } else{
-    gdc$CIN_cx1[[i]] <- 'CIN Low'
   }
 }
 
