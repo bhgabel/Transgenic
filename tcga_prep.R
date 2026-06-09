@@ -13,8 +13,7 @@ mrna <- read_delim("pam50 mRNA expression fpkm Zscores.tsv",
 clinical <- read_delim("brca_tcga_gdc_clinical_data.tsv", 
                        delim = "\t", escape_double = FALSE, trim_ws = TRUE) %>%
   dplyr::select(c("Patient ID", "Sample ID", "Mutation Count", "Fraction Genome Altered",
-                  "Disease Free (Months)","Disease Free Status", "Overall Survival (Months)",
-                  "Overall Survival Status"))
+                  "Disease Free (Months)","Disease Free Status"))
 
 #HR status                          
 firehose <- read_excel("~/Documents/Haricharan/PanCancer/TCGA_Firehose.xlsx", sheet = "Clinical") %>% 
@@ -42,9 +41,8 @@ gdc <- left_join(gdc, subtypes, by=c("Patient ID" = "patient"))
 
 #Rename columns
 colnames(gdc) <- c('Patient ID', 'Sample ID', 'Mutations', 'FGA',
-                   'Disease.Free.Months', 'Disease.Free.Status', 'Overall.Months',
-                   'Overall.Status', 'MLH1', 'MSH2', 'MANTIS', 'ER', 'HER2',
-                   'PR', 'PAM50')
+                   'Disease.Free.Months', 'Disease.Free.Status', 'MLH1', 'MSH2',
+                   'MANTIS', 'ER', 'HER2', 'PR', 'PAM50')
 
 #remove primary data frames, since everything joined into gdc
 remove(list = c('CIN_data', 'clinical', 'firehose', 'mantis', 'mrna', 'mrna_pam50', 'subtypes'))
