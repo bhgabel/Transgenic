@@ -4,8 +4,8 @@ library(tidyverse)
 library(TCGAbiolinks)
 
 #Creating and subsetting data frames ----
-#FPKM z-scores gene expression
-mrna <- read_delim("TCGA mRNA expression z-scores relative to all samples (log microarray).tsv", 
+#mrna z-scores gene expression
+mrna <- read_delim("Firehose mRNA expression z-scores relative to diploid RSEM.tsv",
                    delim = "\t", escape_double = FALSE, trim_ws = TRUE) %>%
   dplyr::select(-c("STUDY_ID"))
 
@@ -16,14 +16,13 @@ clinical <- read_delim("brca_tcga_clinical_data.tsv",
                   "Disease Free (Months)","Disease Free Status",
                   "ER Status By IHC", "IHC-HER2", "PR status by ihc"))
 
-#HR status                          
-firehose <- read_excel("~/Documents/Haricharan/PanCancer/TCGA_Firehose.xlsx", sheet = "Clinical") %>% 
-  dplyr::select(c("Sample ID", "ER Status By IHC", "IHC-HER2", "PR status by ihc"))
+colnames(clinical)[3:9] <- c('Mutations', 'FGA',
+                             'Disease.Free.Months', 'Disease.Free.Status',
+                             'ER', 'HER2', 'PR')
 
 #Combine into one data frame, rename for pam50 subtyping
 gdc <- right_join(clinical, mrna, by=c("Sample ID" = "SAMPLE_ID"))
 #rename(all_of(c("CDCA1" = "NUF2", "KNTC2" = "NDC80", "ORC6L" = "ORC6")))
-# gdc <- left_join(gdc, mrna, by=c("Sample ID" = "SAMPLE_ID"))
 
 #Add MSI MANTIS scores
 mantis <- read_excel("MSI_Mantis.xlsx") %>%
@@ -65,7 +64,7 @@ for(i in 1:length(gdc$PAM50)){
   }
 }
 
-gdc <- drop_na(gdc, "MLH1", "MSH2")
+gdc <- drop_na(gdc, "MLH1")
 
 #Assign factors for low gene expression and remove combined loss
 gdc$MLH1_low <- (gdc$MLH1 <= quantile(gdc$MLH1, probs=0.12, na.rm=T))
@@ -131,16 +130,20 @@ for (i in 1:length(gdc$MSI)){
 table(gdc$MSI, gdc$MMR)
 
 #Assign hormone factors - HR+, HER2+
-gdc$HR <- factor('HR+/HER2+', levels=c('HR+/HER2+', 'HR+/HER2-', 'HR-/HER2+', 'TNBC'))
+gdc$HR <- factor('HR+/HER2-', levels=c('HR+/HER2+', 'HR+/HER2-', 'HR-/HER2+', 'TNBC'))
 for(i in 1:length(gdc$HR)){
-  if(gdc$ER[[i]] == 'Negative' & gdc$PR[[i]] == 'Negative' & gdc$HER2[[i]] == 'Negative'){
-    gdc$HR[[i]] <- 'TNBC'
+  if(is.na(gdc$ER[[i]]) | is.na(gdc$PR[[i]]) | is.na(gdc$HER2[[i]])){
+      gdc$HR[[i]] <- NA
+  } else if(gdc$ER[[i]] == 'Negative' & gdc$PR[[i]] == 'Negative' & gdc$HER2[[i]] == 'Negative'){
+      gdc$HR[[i]] <- 'TNBC'
   } else if((gdc$ER[[i]] == 'Positive' | gdc$PR[[i]] == 'Positive') & gdc$HER2[[i]] == 'Negative'){
-    gdc$HR[[i]] <- 'HR+/HER2-'
+      gdc$HR[[i]] <- 'HR+/HER2-'
   } else if((gdc$ER[[i]] == 'Positive' | gdc$PR[[i]] == 'Positive') & gdc$HER2[[i]] == 'Positive'){
-    gdc$HR[[i]] <- 'HR+/HER2+'
-  } else{
-    gdc$HR[[i]] <- 'HR-/HER2+'
+      gdc$HR[[i]] <- 'HR+/HER2+'
+  } else if(gdc$ER[[i]] == 'Negative' & gdc$PR[[i]] == 'Negative' & gdc$HER2[[i]] == 'Positive'){
+      gdc$HR[[i]] <- 'HR-/HER2+'
+  } else {
+      gdc$HR[[i]] <- NA
   }
 }
 
