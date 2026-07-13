@@ -5,15 +5,16 @@ library(TCGAbiolinks)
 
 #Creating and subsetting data frames ----
 #FPKM z-scores gene expression
-mrna <- read_delim("pam50 mRNA expression fpkm Zscores.tsv", 
+mrna <- read_delim("TCGA mRNA expression z-scores relative to all samples (log microarray).tsv", 
                    delim = "\t", escape_double = FALSE, trim_ws = TRUE) %>%
-  dplyr::select(c('SAMPLE_ID', 'MLH1', 'MSH2'))
+  dplyr::select(-c("STUDY_ID"))
 
 #Clinical info
-clinical <- read_delim("brca_tcga_gdc_clinical_data.tsv", 
+clinical <- read_delim("brca_tcga_clinical_data.tsv", 
                        delim = "\t", escape_double = FALSE, trim_ws = TRUE) %>%
   dplyr::select(c("Patient ID", "Sample ID", "Mutation Count", "Fraction Genome Altered",
-                  "Disease Free (Months)","Disease Free Status"))
+                  "Disease Free (Months)","Disease Free Status",
+                  "ER Status By IHC", "IHC-HER2", "PR status by ihc"))
 
 #HR status                          
 firehose <- read_excel("~/Documents/Haricharan/PanCancer/TCGA_Firehose.xlsx", sheet = "Clinical") %>% 
@@ -40,9 +41,10 @@ subtypes <- TCGAquery_subtype("brca") %>% dplyr::select(c("patient", "BRCA_Subty
 gdc <- left_join(gdc, subtypes, by=c("Patient ID" = "patient"))
 
 #Rename columns
-colnames(gdc) <- c('Patient ID', 'Sample ID', 'Mutations', 'FGA',
-                   'Disease.Free.Months', 'Disease.Free.Status', 'MLH1', 'MSH2',
-                   'MANTIS', 'ER', 'HER2', 'PR', 'PAM50')
+colnames(gdc)[1:9] <- c('Patient ID', 'Sample ID', 'Mutations', 'FGA',
+                   'Disease.Free.Months', 'Disease.Free.Status',
+                   'ER', 'HER2', 'PR')
+colnames(gdc)[62:63] <- c('MANTIS','PAM50')
 
 #remove primary data frames, since everything joined into gdc
 remove(list = c('CIN_data', 'clinical', 'firehose', 'mantis', 'mrna', 'mrna_pam50', 'subtypes'))
@@ -63,7 +65,7 @@ for(i in 1:length(gdc$PAM50)){
   }
 }
 
-gdc <- drop_na(gdc, "MLH1", "MSH2", "Mutations")
+gdc <- drop_na(gdc, "MLH1", "MSH2")
 
 #Assign factors for low gene expression and remove combined loss
 gdc$MLH1_low <- (gdc$MLH1 <= quantile(gdc$MLH1, probs=0.12, na.rm=T))

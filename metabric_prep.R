@@ -43,14 +43,22 @@ meta$HER2 <- as.factor(meta$HER2)
 meta$PR <- as.factor(meta$PR)
 meta$HR <- factor('HR+/HER2+', levels=c('HR+/HER2+', 'HR+/HER2-', 'HR-/HER2+', 'TNBC'))
 for(i in 1:length(meta$HR)){
-  if(meta$ER[[i]] == 'Negative' & meta$PR[[i]] == 'Negative' & meta$HER2[[i]] == 'Negative'){
+  if(is.na(meta$ER[[i]]) | is.na(meta$PR[[i]]) | is.na(meta$HER2[[i]])){
+    meta$HR[[i]] <- NA
+  } else if(meta$ER[[i]] == 'Negative' & meta$PR[[i]] == 'Negative' &
+            meta$HER2[[i]] == 'Negative'){
     meta$HR[[i]] <- 'TNBC'
-  } else if((meta$ER[[i]] == 'Positive' | meta$PR[[i]] == 'Positive') & meta$HER2[[i]] == 'Negative'){
+  } else if((meta$ER[[i]] == 'Positive' | meta$PR[[i]] == 'Positive') &
+            meta$HER2[[i]] == 'Negative'){
     meta$HR[[i]] <- 'HR+/HER2-'
-  } else if((meta$ER[[i]] == 'Positive' | meta$PR[[i]] == 'Positive') & meta$HER2[[i]] == 'Positive'){
+  } else if((meta$ER[[i]] == 'Positive' | meta$PR[[i]] == 'Positive') &
+            meta$HER2[[i]] == 'Positive'){
     meta$HR[[i]] <- 'HR+/HER2+'
-  } else{
+  } else if(meta$ER[[i]] == 'Negative' & meta$PR[[i]] == 'Negative' &
+            meta$HER2[[i]] == 'Positive'){
     meta$HR[[i]] <- 'HR-/HER2+'
+  } else {
+    meta$HR[[i]] <- NA
   }
 }
 
