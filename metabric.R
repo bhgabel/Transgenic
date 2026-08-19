@@ -3,6 +3,7 @@ library(viridisLite)
 library(ggsignif)
 library(survival)
 library(survminer)
+library(forestmodel)
 
 meta <- read.csv("metabric_prepped.csv")
 
@@ -14,6 +15,7 @@ color_blind_palette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442",
 #Plots ----
 ##Boxplots ----
 ##MLH1 low vs rest
+wilcox.test(Mutations ~ MLH1_low, data=meta)
 wilcox.test(meta$Mutations[meta$MLH1_low], meta$Mutations[!meta$MLH1_low])
 
 ggplot(data=meta, aes(x=MLH1_low, y=Mutations, fill=MLH1_low)) +
@@ -67,15 +69,46 @@ percents <- data.frame(MMR=c(rep("MLH1", 5), rep("MSH2", 5), rep("None", 5)),
                                  '10.1%', '3.88%', '20.2%', '39.5%', '26.4%',
                                  '10.4%', '2.26%', '11.2%', '34.7%', '41.5%'))
 
+#enrichment plots
+cutoff <- quantile(meta$MLH1, probs=0.12)
+ggplot(data=subset(meta, PAM50 != "NA"), aes(x=PAM50, y=MLH1, fill=PAM50)) +
+  geom_violin() + stat_summary(fun=mean, geom="crossbar") +
+  geom_hline(yintercept=cutoff, linetype="dashed", color="red") +
+  scale_fill_manual(values=c('#E3E418', '#27AD81', '#31688E', '#443A83','#471164')) +
+  theme_bw() +
+  labs(title="Metabric - MLH1 Expression by Subtype", x=NULL, y="mRNA z-score") +
+  theme(legend.position="none",
+        axis.text.x=element_text(size=rel(1.5)),
+        axis.text.y=element_text(size=rel(1.3)),
+        axis.title.y=element_text(size=rel(1.5)),
+        plot.title=element_text(size=rel(1.5), hjust=0.3),
+        legend.text=element_text(size=rel(1.2)),
+        legend.title=element_text(size=rel(1.3)))
 
-ggplot(data=subset(meta, PAM50 != "NA"), aes(x=MMR, fill=PAM50)) +
+cutoff <- quantile(meta$MSH2, probs=0.08)
+ggplot(data=subset(meta, PAM50 != "NA"), aes(x=PAM50, y=MSH2, fill=PAM50)) +
+  geom_violin() + stat_summary(fun=mean, geom="crossbar") +
+  geom_hline(yintercept=cutoff, linetype="dashed", color="red") +
+  scale_fill_manual(values=c('#E3E418', '#27AD81', '#31688E', '#443A83','#471164')) +
+  theme_bw() +
+  labs(title="Metabric - MSH2 Expression by Subtype", x=NULL, y="mRNA z-score") +
+  theme(legend.position="none",
+        axis.text.x=element_text(size=rel(1.5)),
+        axis.text.y=element_text(size=rel(1.3)),
+        axis.title.y=element_text(size=rel(1.5)),
+        plot.title=element_text(size=rel(1.5), hjust=0.3),
+        legend.text=element_text(size=rel(1.2)),
+        legend.title=element_text(size=rel(1.3)))
+ggsave(filename="Images/Metabric_enrichment_MLH1_supplement.tiff", dpi=600)
+
+ggplot(data=subset(meta, HR != "NA"), aes(x=MMR, fill=HR)) +
   geom_bar(position="fill", stat="count", color="black") +
   # geom_text(stat="count", position=position_fill(vjust=0.5),
   #           aes(label=after_stat(count)), color="white") +
-  theme_classic() + labs(title="Metabric - PAM50 Subtype by Mismatch Repair Deficiency",
+  theme_classic() + labs(title="Metabric",
                          y="Percentage", x=NULL) +
   scale_x_discrete(labels=c("Low MLH1", "Low MSH2", "Rest")) +
-  scale_fill_manual(values=c('#E3E418', '#27AD81', '#31688E', '#443A83','#471164')) +
+  scale_fill_manual(values=c('#E3E418', '#27AD81', '#31688E', '#443A83')) +
   scale_y_continuous(expand=c(0,0), labels=c("0%", "25%", "50%", "75%", "100%")) +
   theme(axis.text.x=element_text(size=rel(1.5)),
         axis.text.y=element_text(size=rel(1.3)),
@@ -94,64 +127,192 @@ chisq.test(table(meta$PAM50 == "Basal", meta$MMR == "MLH1"))
 chisq.test(table(meta$PAM50 == "LumA", meta$MMR == "MSH2"))
 
 #Survival plots ----
-colnames(meta)[c(61,62)] <- c("Surv.Status", "Relapse.Months")
+#colnames(meta)[c(61,62)] <- c("Surv.Status", "Relapse.Months")
 meta$Relapse.Status.l <- ifelse(meta$Relapse.Status == "0:Not Recurred", 0, 1)
 meta$Relapse.Months <- meta$Relapse.Months/12 #years for plotting
 
+meta$HR <- relevel(meta$HR, ref='HR+/HER2-')
+meta$MMR <- relevel(meta$MMR, ref="None")
+
+
+surv.df <- meta
+surv.df$time <- ifelse(surv.df$Relapse.Months >=10, 10, surv.df$Relapse.Months)
+surv.df$event <- ifelse(surv.df$Relapse.Months >= 10, 0, surv.df$Relapse.Status.l)
+
+surv.df <- read.csv("Relapse_Free_METABRIC_combined_Sv_070626.csv", header=T)
+surv.df$time <- surv.df$time/12
+
+fit <- survfit(Surv(time, event) ~ MMR,
+               data=surv.df)
+ggsurvplot(fit, data=surv.df, pval=T,
+           xlim=c(0,10), xlab="Time (Years)", break.time.by=1,
+           legend.title="", surv.scale="percent", ylab="Relapse probability",
+           title="Metabric (Overall)")
+
 #MLH1
-fit <- survfit(Surv(Relapse.Months, Relapse.Status.l) ~ MLH1_low,
-               data=subset(meta, HR == "HR+/HER2+"))
-ggsurvplot(fit, data=subset(meta, HR == "HR+/HER2+"), pval=T,
+
+fit <- survfit(Surv(time, event) ~ MLH1_low,
+               data=subset(surv.df, PAM50 == "LumA"))
+ggsurvplot(fit, data=subset(surv.df, PAM50 == "LumA"), pval=T,
            xlim=c(0,10), xlab="Time (Years)", break.time.by=1,
            legend.labs=c("Normal", "Low MLH1"), font.legend=c(13),
-           legend.title="", surv.scale="percent",
-           title="Metabric (HR+/HER2+)", palette=c("black", "#31688E"))$plot +
+           legend.title="", surv.scale="percent", ylab="Relapse probability",
+           title="Metabric (Luminal A)", palette=c("black", "#31688E"))$plot +
   theme(plot.title = element_text(hjust=0.5, size=16))
 
-fit <- survfit(Surv(Relapse.Months, Relapse.Status.l) ~ MLH1_low,
-               data=subset(meta, HR == "HR+/HER2-"))
-ggsurvplot(fit, data=subset(meta, HR == "HR+/HER2-"), pval=T,
+fit <- survfit(Surv(time, event) ~ MLH1_low,
+               data=subset(surv.df, PAM50 == "LumB"))
+ggsurvplot(fit, data=subset(surv.df, PAM50 == "LumB"), pval=T,
            xlim=c(0,10), xlab="Time (Years)", break.time.by=1,
            legend.labs=c("Normal", "Low MLH1"), font.legend=c(13),
-           legend.title="", surv.scale="percent",
-           title="Metabric (HR+/HER2-)", palette=c("black", "#31688E"))$plot +
+           legend.title="", surv.scale="percent", ylab="Relapse probability",
+           title="Metabric (Luminal B)", palette=c("black", "#31688E"))$plot +
   theme(plot.title = element_text(hjust=0.5, size=16))
 
-fit <- survfit(Surv(Relapse.Months, Relapse.Status.l) ~ MLH1_low,
-               data=subset(meta, HR == "TNBC"))
-ggsurvplot(fit, data=subset(meta, HR == "TNBC"), pval=T,
+fit <- survfit(Surv(time, event) ~ MLH1_low,
+               data=subset(surv.df, PAM50 == "LumA" | PAM50 == "LumB"))
+ggsurvplot(fit, data=subset(surv.df, PAM50 == "LumA" | PAM50 == "LumB"), pval=T,
            xlim=c(0,10), xlab="Time (Years)", break.time.by=1,
            legend.labs=c("Normal", "Low MLH1"), font.legend=c(13),
-           legend.title="", surv.scale="percent",
-           title="Metabric (TNBC)", palette=c("black", "#31688E"))$plot +
+           legend.title="", surv.scale="percent", ylab="Relapse probability",
+           title="Metabric (Luminal)", palette=c("black", "#31688E"))$plot +
   theme(plot.title = element_text(hjust=0.5, size=16))
+
+
+fit <- survfit(Surv(time, event) ~ MLH1_low,
+               data=subset(surv.df, PAM50 == "Luminal"))
+ggsurvplot(fit, data=subset(surv.df, PAM50 == "Luminal"), pval=T,
+           xlim=c(0,10), xlab="Time (Years)", break.time.by=1,
+           legend.labs=c("Normal", "Low MLH1"), font.legend=c(13),
+           legend.title="", surv.scale="percent", ylab="Relapse probability",
+           title="Metabric (Luminal)", palette=c("black", "#31688E"))$plot +
+  theme(plot.title = element_text(hjust=0.5, size=16))
+
+fit <- survfit(Surv(time, event) ~ MLH1_low,
+               data=subset(surv.df, PAM50 == "Her2"))
+ggsurvplot(fit, data=subset(surv.df, PAM50 == "Her2"), pval=T,
+           xlim=c(0,10), xlab="Time (Years)", break.time.by=1,
+           legend.labs=c("Normal", "Low MLH1"), font.legend=c(13),
+           legend.title="", surv.scale="percent", ylab="Relapse probability",
+           title="Metabric (HER2)", palette=c("black", "#31688E"))$plot +
+  theme(plot.title = element_text(hjust=0.5, size=16))
+
+fit <- survfit(Surv(time, event) ~ MLH1_low,
+               data=subset(surv.df, PAM50 == "Basal"))
+ggsurvplot(fit, data=subset(surv.df, PAM50 == "Basal"), pval=T,
+           xlim=c(0,10), xlab="Time (Years)", break.time.by=1,
+           legend.labs=c("Normal", "Low MLH1"), font.legend=c(13),
+           legend.title="", surv.scale="percent", ylab="Relapse probability",
+           title="Metabric (Basal)", palette=c("black", "#31688E"))$plot +
+  theme(plot.title = element_text(hjust=0.5, size=16))
+
+ggsave(filename="Images/Metabric_survival_MLH1_LumB.svg", dpi=600)
+
 
 #MSH2
-fit <- survfit(Surv(Relapse.Months, Relapse.Status.l) ~ MSH2_low,
-               data=subset(meta, HR == "HR+/HER2+"))
-ggsurvplot(fit, data=subset(meta, HR == "HR+/HER2+"), pval=T,
+fit <- survfit(Surv(time, event) ~ MSH2_low,
+               data=subset(surv.df, PAM50 == "Luminal"))
+ggsurvplot(fit, data=surv.df, pval=T,
            xlim=c(0,10), xlab="Time (Years)", break.time.by=1,
            legend.labs=c("Normal", "Low MSH2"), font.legend=c(13),
-           legend.title="", surv.scale="percent",
-           title="Metabric (HR+/HER2+)", palette=c("black", "#E3E418"))$plot +
+           legend.title="", surv.scale="percent", ylab="Relapse probability",
+           title="Metabric (Luminal)", palette=c("black", "#E3E418"))$plot +
   theme(plot.title = element_text(hjust=0.5, size=16))
 
-fit <- survfit(Surv(Relapse.Months, Relapse.Status.l) ~ MSH2_low,
-               data=subset(meta, HR == "HR+/HER2-"))
-ggsurvplot(fit, data=subset(meta, HR == "HR+/HER2-"), pval=T,
+fit <- survfit(Surv(time, event) ~ MSH2_low,
+               data=subset(surv.df, PAM50 == "LumA"))
+ggsurvplot(fit, data=subset(surv.df, PAM50 == "LumA"), pval=T,
            xlim=c(0,10), xlab="Time (Years)", break.time.by=1,
            legend.labs=c("Normal", "Low MSH2"), font.legend=c(13),
-           legend.title="", surv.scale="percent",
-           title="Metabric (HR+/HER2-)", palette=c("black", "#E3E418"))$plot +
+           legend.title="", surv.scale="percent", ylab="Relapse probability",
+           title="Metabric (Luminal A)", palette=c("black", "#E3E418"))$plot +
   theme(plot.title = element_text(hjust=0.5, size=16))
 
-fit <- survfit(Surv(Relapse.Months, Relapse.Status.l) ~ MSH2_low,
-               data=subset(meta, HR == "TNBC"))
-ggsurvplot(fit, data=subset(meta, HR == "TNBC"), pval=T,
+fit <- survfit(Surv(time, event) ~ MSH2_low,
+               data=subset(surv.df, PAM50 == "LumB"))
+ggsurvplot(fit, data=subset(surv.df, PAM50 == "LumB"), pval=T,
            xlim=c(0,10), xlab="Time (Years)", break.time.by=1,
            legend.labs=c("Normal", "Low MSH2"), font.legend=c(13),
-           legend.title="", surv.scale="percent",
-           title="Metabric (TNBC)", palette=c("black", "#E3E418"))$plot +
+           legend.title="", surv.scale="percent", ylab="Relapse probability",
+           title="Metabric (Luminal B)", palette=c("black", "#E3E418"))$plot +
   theme(plot.title = element_text(hjust=0.5, size=16))
 
-ggsave(filename="Images/Metabric_survival_MSH2_TNBC.tiff", dpi=600)
+fit <- survfit(Surv(time, event) ~ MSH2_low,
+               data=subset(surv.df, PAM50 == "Her2"))
+ggsurvplot(fit, data=surv.df, pval=T,
+           xlim=c(0,10), xlab="Time (Years)", break.time.by=1,
+           legend.labs=c("Normal", "Low MSH2"), font.legend=c(13),
+           legend.title="", surv.scale="percent", ylab="Relapse probability",
+           title="Metabric (HER2)", palette=c("black", "#E3E418"))$plot +
+  theme(plot.title = element_text(hjust=0.5, size=16))
+
+fit <- survfit(Surv(time, event) ~ MSH2_low,
+               data=subset(surv.df, PAM50 == "Basal"))
+ggsurvplot(fit, data=subset(surv.df, PAM50 == "Basal"), pval=T,
+           xlim=c(0,10), xlab="Time (Years)", break.time.by=1,
+           legend.labs=c("Normal", "Low MSH2"), font.legend=c(13),
+           legend.title="", surv.scale="percent", ylab="Relapse probability",
+           title="Metabric (Basal)", palette=c("black", "#E3E418"))$plot +
+  theme(plot.title = element_text(hjust=0.5, size=16))
+
+ggsave(filename="Images/Metabric_survival_MSH2_LumB.svg", dpi=600)
+
+
+#Forest plots ----
+#set parameters for plot
+panels <- list(
+  list(width = 0.03),
+  list(width = 0.1, display = ~variable, fontface = "bold", heading = "Variable"),
+  list(width = 0.1, display = ~level),
+  list(width = 0.05, display = ~n, hjust = 1, heading = "N"),
+  list(width = 0.03, item = "vline", hjust = 0.5),
+  list(
+    width = 0.55, item = "forest", hjust = 0.5, heading = "Hazard ratio", linetype = "dashed",
+    line_x = 0
+  ),
+  list(width = 0.03, item = "vline", hjust = 0.5),
+  list(width = 0.12, display = ~ ifelse(reference, "Reference", sprintf(
+    "%0.2f (%0.2f, %0.2f)",
+    trans(estimate), trans(conf.low), trans(conf.high)
+  )), display_na = NA),
+  list(
+    width = 0.05,
+    display = ~ ifelse(reference, "", format.pval(p.value, digits = 3, eps = 0.001)),
+    display_na = NA, hjust = 1, heading = "p-value"
+  ),
+  list(width = 0.03)
+)
+
+#MLH1
+surv.df$PAM50 <- factor(surv.df$PAM50, levels=c("Luminal", "Her2", "Basal"))
+
+fit_list <- vector("list", 4)
+i <- 1
+for(hr in c("LumA", "LumB", "Her2", "Basal")){
+  fit <- coxph(Surv(time, event) ~ MLH1_low,
+               data=subset(surv.df, PAM50 == hr))
+  print(hr)
+  print(fit)
+  fit_list[[i]] <- fit
+  names(fit_list)[[i]] <- hr
+  i <- i + 1
+}
+
+forest_model(model_list=fit_list, panels=panels, merge_models=T)
+ggsave(filename="Images/Metabric_forest_MLH1.svg", dpi=600)
+
+#MSH2
+fit_list <- vector("list", 4)
+i <- 1
+for(hr in c("LumA", "LumB", "Her2", "Basal")){
+  fit <- coxph(Surv(time, event) ~ MSH2_low,
+               data=subset(surv.df, PAM50 == hr))
+  print(hr)
+  print(fit)
+  fit_list[[i]] <- fit
+  names(fit_list)[[i]] <- hr
+  i <- i + 1
+}
+
+forest_model(model_list=fit_list, panels=panels, merge_models=T)
+ggsave(filename="Images/Metabric_forest_MSH2.svg", dpi=600)

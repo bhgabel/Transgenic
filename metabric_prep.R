@@ -88,4 +88,4 @@ meta$PAM50 <- as.factor(pam50.pred$subtype)
 
 meta <- drop_na(meta)
 
-write.csv(meta, "metabric_prepped.csv")
+write.csv(meta, "metabric_prepped.csv", row.names=F)
