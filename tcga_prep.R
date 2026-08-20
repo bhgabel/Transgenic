@@ -5,7 +5,7 @@ library(TCGAbiolinks)
 
 #Creating and subsetting data frames ----
 #mrna z-scores gene expression
-mrna <- read_delim("Firehose mRNA expression z-scores relative to diploid RSEM.tsv",
+mrna <- read_delim("TCGA mRNA expression (RNA Seq V2 RSEM).txt",
                    delim = "\t", escape_double = FALSE, trim_ws = TRUE) %>%
   dplyr::select(-c("STUDY_ID"))
 
@@ -27,51 +27,32 @@ gdc <- right_join(clinical, mrna, by=c("Sample ID" = "SAMPLE_ID"))
 #Add MSI MANTIS scores
 mantis <- read_excel("MSI_Mantis.xlsx") %>%
   dplyr::select(c("Case ID", "MANTIS Score"))
+colnames(mantis)[2] <- "MANTIS"
 
 gdc <- left_join(gdc, mantis, by=c("Patient ID" = "Case ID"))
-
-gdc <- left_join(gdc, firehose)
 
 
 #Pull pam50 subtypes from TCGA package
 subtypes <- TCGAquery_subtype("brca") %>% dplyr::select(c("patient", "BRCA_Subtype_PAM50"))
+colnames(subtypes)[2] <- "PAM50"
 
 #Combine to main data frame
 gdc <- left_join(gdc, subtypes, by=c("Patient ID" = "patient"))
 
-#Rename columns
-colnames(gdc)[1:9] <- c('Patient ID', 'Sample ID', 'Mutations', 'FGA',
-                   'Disease.Free.Months', 'Disease.Free.Status',
-                   'ER', 'HER2', 'PR')
-colnames(gdc)[62:63] <- c('MANTIS','PAM50')
-
 #remove primary data frames, since everything joined into gdc
-remove(list = c('CIN_data', 'clinical', 'firehose', 'mantis', 'mrna', 'mrna_pam50', 'subtypes'))
+remove(list = c('CIN_data', 'clinical', 'mantis', 'mrna', 'mrna_pam50', 'subtypes'))
 
 #Assign factors ----
-#Assign factors + basal/lum
-gdc$PAM50 <- as.factor(gdc$PAM50)
-gdc$pam50_f <- factor("Other", levels=c("Basal", "Luminal", "Other"))
-for(i in 1:length(gdc$PAM50)){
-  if(is.na(gdc$PAM50[[i]])){
-    gdc$pam50_f[[i]] <- "Other"
-  } else if(gdc$PAM50[[i]] == "Basal"){
-    gdc$pam50_f[[i]] <- "Basal"
-  } else if(gdc$PAM50[[i]] == "LumA" | gdc$PAM50[[i]] == "LumB"){
-    gdc$pam50_f[[i]] <- "Luminal"
-  } else{
-    gdc$pam50_f[[i]] <- "Other"
-  }
-}
-
-gdc <- drop_na(gdc, "MLH1")
-
+gdc <- drop_na(gdc, MLH1)
 #Assign factors for low gene expression and remove combined loss
-gdc$MLH1_low <- (gdc$MLH1 <= quantile(gdc$MLH1, probs=0.12, na.rm=T))
-gdc$MSH2_low <- (gdc$MSH2 <= quantile(gdc$MSH2, probs=0.08, na.rm=T))
+#trying new cutoff
+gdc$MLH1_low <- (gdc$MLH1 <= quantile(gdc$MLH1, probs=0.1427, na.rm=T))
+gdc$MSH2_low <- (gdc$MSH2 <= quantile(gdc$MSH2, probs=0.05, na.rm=T))
 gdc$MMR <- factor("None", levels=c("MLH1", "MSH2", "None"))
 for(i in 1:length(gdc$MMR)){
-  if(gdc$MLH1_low[[i]] && gdc$MSH2_low[[i]]){
+  if(is.na(gdc$MLH1_low[[i]])){
+    gdc$MMR[[i]] <- NA
+  } else if(gdc$MLH1_low[[i]] && gdc$MSH2_low[[i]]){
     gdc$MMR[[i]] <- NA
   } else if(gdc$MLH1_low[[i]]){
     gdc$MMR[[i]] <- "MLH1"
@@ -130,7 +111,7 @@ for (i in 1:length(gdc$MSI)){
 table(gdc$MSI, gdc$MMR)
 
 #Assign hormone factors - HR+, HER2+
-gdc$HR <- factor('HR+/HER2-', levels=c('HR+/HER2+', 'HR+/HER2-', 'HR-/HER2+', 'TNBC'))
+gdc$HR <- factor('HR+/HER2-', levels=c('HR+/HER2-', 'HR+/HER2+', 'HR-/HER2+', 'TNBC'))
 for(i in 1:length(gdc$HR)){
   if(is.na(gdc$ER[[i]]) | is.na(gdc$PR[[i]]) | is.na(gdc$HER2[[i]])){
       gdc$HR[[i]] <- NA
