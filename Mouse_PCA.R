@@ -123,7 +123,7 @@ mmr <- subset(total, MMR != "None")
 
 write.csv(total, "mouse_pca_prepped.csv")
 
-#total <- read.csv("mouse_pca_prepped.csv")
+total <- read.csv("mouse_pca_prepped.csv")
 #total[1] <- NULL
 
 
@@ -146,6 +146,7 @@ pc.mmr.pam50 <- prcomp(dplyr::select(mmr[,-c(1:6)], any_of(pam50$Genes)), center
 basal <- subset(total, pam50 == "Basal" & type != "Mouse")
 basal <- add_column(basal, id = row_number(basal$type), .before=1)
 pc.basal <- prcomp(dplyr::select(basal[,-c(1:6)], any_of(pam50$Genes)), center=T, scale.=T)
+pc.basal.ddr <- prcomp(dplyr::select(basal[,-c(1:6)], any_of(ddr[,1])), center=T, scale.=T)
 #all pt - mlh1 + basal vs not
 
 #luminal pt - msh2 vs not
