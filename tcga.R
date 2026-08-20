@@ -317,13 +317,14 @@ ggplot(data=subset(gdc, PAM50 != "NA"), aes(x=MMR, fill=PAM50)) +
         legend.text=element_text(size=rel(1.2)),
         legend.title=element_text(size=rel(1.3)))
 
-ggsave(filename="Images/TCGA_enrichment.svg", dpi=600)
+ggsave(filename="Images/TCGA_enrichment_v2.tiff", dpi=600)
 
 #stats for above plots
 table(gdc$PAM50, gdc$MMR)
 round(proportions(table(gdc$PAM50, gdc$MMR), margin=2)*100, digits=1)
 chisq.test(table(gdc$PAM50, gdc$MMR), simulate.p.value=T)
 chisq.test(table(gdc$PAM50 == "Basal", gdc$MMR == "MLH1"))
+chisq.test(table(gdc$PAM50 == "LumA", gdc$MMR == "MSH2"))
 chisq.test(table(gdc$PAM50 == "LumA" | gdc$PAM50 == "LumB", gdc$MMR == "MSH2"))
 
 #MSI by subtype
@@ -357,10 +358,6 @@ gdc$Disease.Status.l <- ifelse(gdc$Disease.Free.Status == "0:DiseaseFree", 0, 1)
 gdc$Disease.Free.Months <- gdc$Disease.Free.Months/12 #years for plotting
 
 gdc$HR <- relevel(gdc$HR, ref='HR+/HER2-')
-
-surv.df <- subset(gdc, Disease.Free.Months <= 10)
-surv.df$time <- surv.df$Disease.Free.Months
-surv.df$event <- surv.df$Disease.Status.l
 
 surv.df <- gdc
 surv.df$time <- ifelse(surv.df$Disease.Free.Months >=10, 10, surv.df$Disease.Free.Months)
@@ -417,7 +414,7 @@ ggsurvplot(fit, data=subset(surv.df, PAM50 == "Basal"), pval=T,
            title="TCGA (Basal)", palette=c("black", "#31688E"))$plot +
   theme(plot.title = element_text(hjust=0.5, size=16))
 
-ggsave(filename="Images/TCGA_survival_MLH1_LumB.svg", dpi=600)
+ggsave(filename="Images/TCGA_survival_MLH1_Basal.svg", dpi=600)
 
 
 #MSH2
@@ -466,7 +463,7 @@ ggsurvplot(fit, data=subset(surv.df, PAM50 == "Basal"), pval=T,
            title="TCGA (Basal)", palette=c("black", "#E3E418"))$plot +
   theme(plot.title = element_text(hjust=0.5, size=16))
 
-ggsave(filename="Images/TCGA_survival_MSH2_LumB.tiff", dpi=600)
+ggsave(filename="Images/TCGA_survival_MSH2_Her2.tiff", dpi=600)
 
 
 #Forest plots ----
@@ -508,19 +505,27 @@ for(hr in c("LumA", "LumB", "Her2", "Basal")){
   fit <- coxph(Surv(time, event) ~ MLH1_low,
                data=subset(surv.df, PAM50 == hr))
   print(hr)
-  print(summary(fit)$conf.int)
+  print(fit)
   fit_list[[i]] <- fit
   names(fit_list)[[i]] <- hr
   i <- i + 1
 }
 
 forest_model(model_list=fit_list, merge_models=T, panels=panels)
-ggsave(filename="Images/TCGA_forest_MLH1.tiff", dpi=600)
+ggsave(filename="Images/TCGA_forest_MLH1.svg", dpi=600)
 
 #MSH2
-#too few Her2/Basal MSH2 low pts to generate plot
-forest_model(coxph(Surv(time, event) ~ MSH2_low,
-                   data=subset(surv.df, pam50.f=="Luminal")))
+fit_list <- vector("list", 3)
+i <- 1
+for(hr in c("LumA", "LumB", "Basal")){
+  fit <- coxph(Surv(time, event) ~ MSH2_low,
+               data=subset(surv.df, PAM50 == hr))
+  print(hr)
+  print(fit)
+  fit_list[[i]] <- fit
+  names(fit_list)[[i]] <- hr
+  i <- i + 1
+}
 
-forest_model(fit)
-ggsave(filename="Images/TCGA_forest_MSH2.tiff", dpi=600)
+forest_model(model_list=fit_list, merge_models=T, panels=panels)
+ggsave(filename="Images/TCGA_forest_MSH2.svg", dpi=600)
