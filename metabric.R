@@ -105,8 +105,9 @@ ggplot(data=subset(meta, PAM50 != "NA"), aes(x=MMR, fill=PAM50)) +
   geom_bar(position="fill", stat="count", color="black") +
   # geom_text(stat="count", position=position_fill(vjust=0.5),
   #           aes(label=after_stat(count)), color="white") +
-  theme_classic() + labs(title="Metabric",
-                         y="Percentage", x=NULL) +
+  theme_classic() +
+  labs(title="Metabric - PAM50 Subtype by Mismatch Repair Deficiency",
+       y="Percentage", x=NULL) +
   scale_x_discrete(labels=c("Low MLH1", "Low MSH2", "Rest")) +
   scale_fill_manual(values=c('#E3E418', '#27AD81', '#31688E', '#443A83','#471164')) +
   scale_y_continuous(expand=c(0,0), labels=c("0%", "25%", "50%", "75%", "100%")) +
