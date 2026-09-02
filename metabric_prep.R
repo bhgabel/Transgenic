@@ -26,8 +26,8 @@ colnames(meta)[c(1, 54:61)] <- c("Sample ID", "Mutations", "Pam50", "ER", "HER2"
 meta <- drop_na(meta, MLH1)
 # Establish factors
 #MMR low
-MLH1_prob <- quantile(meta$MLH1, prob=0.1283, na.rm=T)
-MSH2_prob <- quantile(meta$MSH2, prob=0.0106, na.rm=T)
+MLH1_prob <- quantile(meta$MLH1, prob=0.12, na.rm=T)
+MSH2_prob <- quantile(meta$MSH2, prob=0.08, na.rm=T)
 meta$MLH1_low <- (meta$MLH1 <= MLH1_prob)
 meta$MSH2_low <- (meta$MSH2 <= MSH2_prob)
 meta$MMR <- factor("None", levels=c("MLH1", "MSH2", "None"))

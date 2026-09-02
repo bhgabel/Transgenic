@@ -46,8 +46,8 @@ remove(list = c('CIN_data', 'clinical', 'mantis', 'mrna', 'mrna_pam50', 'subtype
 gdc <- drop_na(gdc, MLH1)
 #Assign factors for low gene expression and remove combined loss
 #trying new cutoff
-gdc$MLH1_low <- (gdc$MLH1 <= quantile(gdc$MLH1, probs=0.1427, na.rm=T))
-gdc$MSH2_low <- (gdc$MSH2 <= quantile(gdc$MSH2, probs=0.05, na.rm=T))
+gdc$MLH1_low <- (gdc$MLH1 <= quantile(gdc$MLH1, probs=0.12, na.rm=T))
+gdc$MSH2_low <- (gdc$MSH2 <= quantile(gdc$MSH2, probs=0.08, na.rm=T))
 gdc$MMR <- factor("None", levels=c("MLH1", "MSH2", "None"))
 for(i in 1:length(gdc$MMR)){
   if(is.na(gdc$MLH1_low[[i]])){
