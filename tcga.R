@@ -99,7 +99,7 @@ kruskal.test(data=subset(gdc, MMR == "MLH1"), Mutations ~ HR)
 ##MLH1 low vs rest
 ggplot(data=gdc, aes(x=MLH1_low, y=Mutations, fill=MLH1_low)) +
   geom_boxplot() + scale_y_continuous(trans="log10") +
-  theme_classic() + scale_x_discrete(labels=c("FALSE"="Normal", "TRUE"="Low (<12%)")) +
+  theme_classic() + scale_x_discrete(labels=c("FALSE"="Rest", "TRUE"="Low (<12%)")) +
   labs(x="MLH1 Gene Expression", y="Mutation Count (log10)", title="Tumor Mutation Burden - TCGA") +
   scale_fill_discrete(guide="none", palette=c("grey", "steelblue")) +
   theme(axis.text.x=element_text(size=rel(1.5)),
@@ -117,7 +117,7 @@ ggsave(filename="Images/TCGA_MLH1_low.tiff", dpi=600)
 #MSH2 low vs rest
 ggplot(data=gdc, aes(x=MSH2_low, y=Mutations, fill=MSH2_low)) +
   geom_boxplot() + scale_y_continuous(trans="log10") +
-  theme_classic() + scale_x_discrete(labels=c("FALSE"="Normal", "TRUE"="Low (<8%)")) +
+  theme_classic() + scale_x_discrete(labels=c("FALSE"="Rest", "TRUE"="Low (<8%)")) +
   labs(x="MSH2 Gene Expression", y="Mutation Count (log10)", title="Tumor Mutation Burden - TCGA") +
   scale_fill_discrete(guide="none", palette=c("grey", "#E3E418")) +
   theme(axis.text.x=element_text(size=rel(1.5)),
@@ -305,8 +305,7 @@ ggplot(data=subset(gdc, PAM50 != "NA"), aes(x=MMR, fill=PAM50)) +
   # geom_text(stat="count", position=position_fill(vjust=0.5),
   #           aes(label=after_stat(count)), color="white") +
   theme_classic() +
-  labs(title="TCGA - PAM50 Subtype by Mismatch Repair Deficiency",
-       y="Percentage", x=NULL) +
+  labs(title="", y="Percentage", x=NULL) +
   scale_x_discrete(labels=c("Low MLH1", "Low MSH2", "Rest")) +
   scale_fill_manual(values=c('#E3E418', '#27AD81', '#31688E', '#443A83','#471164')) +
   scale_y_continuous(expand=c(0,0), labels=c("0%", "25%", "50%", "75%", "100%")) +
@@ -317,7 +316,7 @@ ggplot(data=subset(gdc, PAM50 != "NA"), aes(x=MMR, fill=PAM50)) +
         legend.text=element_text(size=rel(1.2)),
         legend.title=element_text(size=rel(1.3)))
 
-ggsave(filename="Images/TCGA_enrichment_v2.tiff", dpi=600)
+ggsave(filename="Images/TCGA_enrichment.tiff", dpi=600)
 
 #stats for above plots
 table(gdc$PAM50, gdc$MMR)
@@ -364,6 +363,66 @@ surv.df$time <- ifelse(surv.df$Disease.Free.Months >=10, 10, surv.df$Disease.Fre
 surv.df$event <- ifelse(surv.df$Disease.Free.Months >= 10, 0, surv.df$Disease.Status.l)
 
 
+#factor for combination graph
+surv.df$combo <- factor(NA, levels=c("Lum:MSH2", "Lum:None",
+                                     "Basal:MLH1", "Basal:None"))
+for(i in 1:length(surv.df$PAM50)){
+  if(is.na(surv.df$PAM50[[i]])){
+    surv.df$combo[[i]] <- NA
+  }
+  else if(surv.df$PAM50[[i]] == "LumA" | surv.df$PAM50[[i]] == "LumB"){
+    surv.df$combo[[i]] <- ifelse(surv.df$MMR[[i]] == "MSH2",
+                                 "Lum:MSH2", "Lum:None")
+  }
+  else if(surv.df$PAM50[[i]] == "Basal"){
+    surv.df$combo[[i]] <- ifelse(surv.df$MMR[[i]] == "MLH1",
+                                 "Basal:MLH1", "Basal:None")
+  }
+  else{
+    surv.df$combo[[i]] <- NA
+  }
+}
+
+
+surv.df$combo.mlh1 <- factor(NA, levels=c("Lum:None", "Lum:MLH1",
+                                          "Basal:None", "Basal:MLH1"))
+for(i in 1:length(surv.df$PAM50)){
+  if(is.na(surv.df$PAM50[[i]])){
+    surv.df$combo.mlh1[[i]] <- NA
+  }
+  else if(surv.df$PAM50[[i]] == "Basal"){
+    surv.df$combo.mlh1[[i]] <- ifelse(surv.df$MMR[[i]] == "MLH1",
+                                      "Basal:MLH1", "Basal:None")
+  }
+  else if(surv.df$PAM50[[i]] == "LumA" | surv.df$PAM50[[i]] == "LumB"){
+    surv.df$combo.mlh1[[i]] <- ifelse(surv.df$MMR[[i]] == "MLH1",
+                                      "Lum:MLH1", "Lum:None")
+  }
+  else{
+    surv.df$combo.mlh1[[i]] <- NA
+  }
+}
+
+surv.df$combo.msh2 <- factor(NA, levels=c("Lum:None", "Lum:MSH2",
+                                          "Basal:None", "Basal:MSH2"))
+for(i in 1:length(surv.df$PAM50)){
+  if(is.na(surv.df$PAM50[[i]])){
+    surv.df$combo.msh2[[i]] <- NA
+  }
+  else if(surv.df$PAM50[[i]] == "Basal"){
+    surv.df$combo.msh2[[i]] <- ifelse(surv.df$MMR[[i]] == "MSH2",
+                                      "Basal:MSH2", "Basal:None")
+  }
+  else if(surv.df$PAM50[[i]] == "LumA" | surv.df$PAM50[[i]] == "LumB"){
+    surv.df$combo.msh2[[i]] <- ifelse(surv.df$MMR[[i]] == "MSH2",
+                                      "Lum:MSH2", "Lum:None")
+  }
+  else{
+    surv.df$combo.msh2[[i]] <- NA
+  }
+}
+
+
 fit <- survfit(Surv(time, event) ~ MMR, data=surv.df)
 ggsurvplot(fit, data=surv.df, pval=T, xlim=c(0,10), break.time.by=1,
            surv.scale="percent", title="TCGA (Overall)")
@@ -373,7 +432,7 @@ fit <- survfit(Surv(time, event) ~ MLH1_low,
                data=subset(surv.df, PAM50 == "LumA"))
 ggsurvplot(fit, data=subset(surv.df, PAM50=="LumA"), pval=T,
            xlim=c(0,10), xlab="Time (Years)", break.time.by=1,
-           legend.labs=c("Normal", "Low MLH1"), font.legend=c(13),
+           legend.labs=c("Rest", "Low MLH1"), font.legend=c(13),
            legend.title="", surv.scale="percent",
            title="TCGA (Luminal A)", palette=c("black", "#31688E"))$plot +
   theme(plot.title = element_text(hjust=0.5, size=16))
@@ -382,7 +441,7 @@ fit <- survfit(Surv(time, event) ~ MLH1_low,
                data=subset(surv.df, PAM50 == "LumB"))
 ggsurvplot(fit, data=subset(surv.df, PAM50=="LumB"), pval=T,
            xlim=c(0,10), xlab="Time (Years)", break.time.by=1,
-           legend.labs=c("Normal", "Low MLH1"), font.legend=c(13),
+           legend.labs=c("Rest", "Low MLH1"), font.legend=c(13),
            legend.title="", surv.scale="percent",
            title="TCGA (Luminal B)", palette=c("black", "#31688E"))$plot +
   theme(plot.title = element_text(hjust=0.5, size=16))
@@ -391,7 +450,7 @@ fit <- survfit(Surv(time, event) ~ MLH1_low,
                data=subset(surv.df, PAM50 == "LumA" | PAM50 == "LumB"))
 ggsurvplot(fit, data=subset(surv.df, PAM50 == "LumA" | PAM50 == "LumB"), pval=T,
            xlim=c(0,10), xlab="Time (Years)", break.time.by=1,
-           legend.labs=c("Normal", "Low MLH1"), font.legend=c(13),
+           legend.labs=c("Rest", "Low MLH1"), font.legend=c(13),
            legend.title="", surv.scale="percent",
            title="TCGA (Luminal)", palette=c("black", "#31688E"))$plot +
   theme(plot.title = element_text(hjust=0.5, size=16))
@@ -400,7 +459,7 @@ fit <- survfit(Surv(time, event) ~ MLH1_low,
                data=subset(surv.df, PAM50 == "Her2"))
 ggsurvplot(fit, data=subset(surv.df, PAM50 == "Her2"), pval=T,
            xlim=c(0,10), xlab="Time (Years)", break.time.by=1,
-           legend.labs=c("Normal", "Low MLH1"), font.legend=c(13),
+           legend.labs=c("Rest", "Low MLH1"), font.legend=c(13),
            legend.title="", surv.scale="percent",
            title="TCGA (HER2)", palette=c("black", "#31688E"))$plot +
   theme(plot.title = element_text(hjust=0.5, size=16))
@@ -409,12 +468,29 @@ fit <- survfit(Surv(time, event) ~ MLH1_low,
                data=subset(surv.df, PAM50 == "Basal"))
 ggsurvplot(fit, data=subset(surv.df, PAM50 == "Basal"), pval=T,
            xlim=c(0,10), xlab="Time (Years)", break.time.by=1,
-           legend.labs=c("Normal", "Low MLH1"), font.legend=c(13),
+           legend.labs=c("Rest", "Low MLH1"), font.legend=c(13),
            legend.title="", surv.scale="percent",
            title="TCGA (Basal)", palette=c("black", "#31688E"))$plot +
   theme(plot.title = element_text(hjust=0.5, size=16))
 
-ggsave(filename="Images/TCGA_survival_MLH1_Basal.svg", dpi=600)
+
+fit <- survfit(Surv(time, event) ~ combo.mlh1,
+               data=surv.df)
+ggsurvplot(fit, data=surv.df,
+           pval=F, xlim=c(0,10), break.time.by=1, xlab="Time (Years)",
+           legend.labs=c("Luminal Rest\n(n=713)", "Luminal MLH1\n(n=53)",
+                         "Basal Rest\n(n=107)", "Basal MLH1\n(n=82)"),
+           linetype=c(1,1,3,3), censor.shape=124, censor.size=3,
+           legend.title="", surv.scale="percent",
+           subtitle="(TCGA)",
+           title="Probability of Survival with MLH1 Loss",
+           palette=c('black', '#31688E', 'black', '#31688E'))$plot +
+  theme(plot.title=element_text(hjust=0.5, size=16, face="bold", family="Arial"),
+        plot.subtitle=element_text(hjust=0.5, size=14)) +
+  annotate("text", label="Luminal HR = 2.60, p = 0.006\nBasal HR = 1.36, p = 0.43",
+           x=0.1, y=0.15, hjust=0)
+
+ggsave(filename="Images/TCGA_survival_MLH1_Combo_v2.svg", dpi=600)
 
 
 #MSH2
@@ -422,7 +498,7 @@ fit <- survfit(Surv(time, event) ~ MSH2_low,
                data=subset(surv.df, PAM50 == "LumA"))
 ggsurvplot(fit, data=subset(surv.df, PAM50 == "LumA"), pval=T,
            xlim=c(0,10), xlab="Time (Years)", break.time.by=1,
-           legend.labs=c("Normal", "Low MSH2"), font.legend=c(13),
+           legend.labs=c("Rest", "Low MSH2"), font.legend=c(13),
            legend.title="", surv.scale="percent",
            title="TCGA (Luminal A)", palette=c("black", "#E3E418"))$plot +
   theme(plot.title = element_text(hjust=0.5, size=16))
@@ -431,7 +507,7 @@ fit <- survfit(Surv(time, event) ~ MSH2_low,
                data=subset(surv.df, PAM50 == "LumB"))
 ggsurvplot(fit, data=subset(surv.df, PAM50 == "LumB"), pval=T,
            xlim=c(0,10), xlab="Time (Years)", break.time.by=1,
-           legend.labs=c("Normal", "Low MSH2"), font.legend=c(13),
+           legend.labs=c("Rest", "Low MSH2"), font.legend=c(13),
            legend.title="", surv.scale="percent",
            title="TCGA (Luminal B)", palette=c("black", "#E3E418"))$plot +
   theme(plot.title = element_text(hjust=0.5, size=16))
@@ -440,7 +516,7 @@ fit <- survfit(Surv(time, event) ~ MSH2_low,
                data=subset(surv.df, PAM50 == "LumA" | PAM50 == "LumB"))
 ggsurvplot(fit, data=subset(surv.df, PAM50 == "LumA" | PAM50 == "LumB"), pval=T,
            xlim=c(0,10), xlab="Time (Years)", break.time.by=1,
-           legend.labs=c("Normal", "Low MSH2"), font.legend=c(13),
+           legend.labs=c("Rest", "Low MSH2"), font.legend=c(13),
            legend.title="", surv.scale="percent",
            title="TCGA (Luminal)", palette=c("black", "#E3E418"))$plot +
   theme(plot.title = element_text(hjust=0.5, size=16))
@@ -449,7 +525,7 @@ fit <- survfit(Surv(time, event) ~ MSH2_low,
                data=subset(surv.df, PAM50 == "Her2"))
 ggsurvplot(fit, data=subset(surv.df, PAM50 == "Her2"), pval=T,
            xlim=c(0,10), xlab="Time (Years)", break.time.by=1,
-           legend.labs=c("Normal", "Low MSH2"), font.legend=c(13),
+           legend.labs=c("Rest", "Low MSH2"), font.legend=c(13),
            legend.title="", surv.scale="percent",
            title="TCGA (HER2)", palette=c("black", "#E3E418"))$plot +
   theme(plot.title = element_text(hjust=0.5, size=16))
@@ -458,12 +534,50 @@ fit <- survfit(Surv(time, event) ~ MSH2_low,
                data=subset(surv.df, PAM50 == "Basal"))
 ggsurvplot(fit, data=subset(surv.df, PAM50 == "Basal"), pval=T,
            xlim=c(0,10), xlab="Time (Years)", break.time.by=1,
-           legend.labs=c("Normal", "Low MSh2"), font.legend=c(13),
+           legend.labs=c("Rest", "Low MSh2"), font.legend=c(13),
            legend.title="", surv.scale="percent",
            title="TCGA (Basal)", palette=c("black", "#E3E418"))$plot +
   theme(plot.title = element_text(hjust=0.5, size=16))
 
-ggsave(filename="Images/TCGA_survival_MSH2_Her2.tiff", dpi=600)
+fit <- survfit(Surv(time, event) ~ combo.msh2,
+               data=surv.df)
+ggsurvplot(fit, data=surv.df,
+           pval=F, xlim=c(0,10), break.time.by=1, xlab="Time (Years)",
+           legend.labs=c("Luminal Rest\n(n=731)", "Luminal MSH2\n(n=35)",
+                         "Basal Rest\n(n=188)", "Basal MSH2\n(n=1)"),
+           linetype=c(1,1,3,3), censor.shape=124, censor.size=3,
+           legend.title="", surv.scale="percent",
+           subtitle="(TCGA)",
+           title="Probability of Survival with MSH2 Loss",
+           palette=c('black', '#CC7722', 'black', '#CC7722'))$plot +
+  theme(plot.title=element_text(hjust=0.5, size=16, face="bold", family="Arial"),
+        plot.subtitle=element_text(hjust=0.5, size=14)) +
+  annotate("text", label="Luminal HR = 0.97, p = 0.96\nBasal HR = 78.8, p < 0.001",
+           x=0.1, y=0.15, hjust=0)
+
+
+
+fit <- survfit(Surv(time, event) ~ combo,
+               data=surv.df)
+ggsurvplot(fit, data=surv.df,
+           pval=F, break.time.by=1, xlab="Time (Years)",
+           legend.labs=c("Low MSH2\n(n=35)", "Rest\n(n=731)",
+                         "Low MLH1\n(n=82)", "Rest\n(n=107)"),
+           linetype=c(2,1,2,1), censor.shape=124, censor=F,
+           legend.title="Luminal                                            Basal",
+           surv.scale="percent",
+           subtitle="(TCGA)",
+           title="Probability of Survival with MMR Loss",
+           palette=c('#c29f1f', '#c29f1f', "#56B4E9", "#56B4E9"))$plot + 
+  theme(plot.title=element_text(hjust=0.5, size=16, face="bold", family="Arial"),
+        plot.subtitle=element_text(hjust=0.5, size=14, face="bold"),
+        legend.title=element_text(hjust=0.5, size=12),
+        legend.key.size=unit(2, "line"), legend.location="plot",
+        legend.position="bottom", legend.title.position="top") +
+  annotate("text", label="Luminal HR = 0.97, p = 0.96\nBasal HR = 1.36, p = 0.43",
+           x=0.1, y=0.15, hjust=0)
+
+ggsave(filename="Images/TCGA_survival_Combo.svg", dpi=600)
 
 
 #Forest plots ----
@@ -512,7 +626,7 @@ for(hr in c("LumA", "LumB", "Her2", "Basal")){
 }
 
 forest_model(model_list=fit_list, merge_models=T, panels=panels)
-ggsave(filename="Images/TCGA_forest_MLH1.svg", dpi=600)
+ggsave(filename="Images/TCGA_forest_MLH1_v2.tiff", dpi=600)
 
 #MSH2
 fit_list <- vector("list", 3)
@@ -528,4 +642,100 @@ for(hr in c("LumA", "LumB", "Basal")){
 }
 
 forest_model(model_list=fit_list, merge_models=T, panels=panels)
-ggsave(filename="Images/TCGA_forest_MSH2.svg", dpi=600)
+ggsave(filename="Images/TCGA_forest_MSH2_v2.tiff", dpi=600)
+
+
+#other forest plotting method
+#MLH1
+subgroup_hr <- function(data, label) {
+  s <- summary(coxph(Surv(time, event) ~ MLH1_low, data = data))
+  data.frame(
+    subgroup = label,
+    n        = nrow(data),
+    events   = s$nevent,
+    hr       = s$conf.int[1, "exp(coef)"],
+    lower    = s$conf.int[1, "lower .95"],
+    upper    = s$conf.int[1, "upper .95"]
+  )
+}
+
+forest_df <- rbind(
+  subgroup_hr(surv.df, label="Overall"),
+  subgroup_hr(subset(surv.df, PAM50 == "LumA" | PAM50 == "LumB"), label="Luminal"),
+  subgroup_hr(subset(surv.df, PAM50 == "LumA"), label="LumA"),
+  subgroup_hr(subset(surv.df, PAM50 == "LumB"), label="LumB"),
+  subgroup_hr(subset(surv.df, PAM50 == "Her2"), label="Her2"),
+  subgroup_hr(subset(surv.df, PAM50 == "Basal"), label="Basal")
+)
+
+forest_df
+
+forest_df$lab <- sprintf("%.2f (%.2f, %.2f)", forest_df$hr, forest_df$lower,
+                         forest_df$upper)
+forest_df$row <- factor(forest_df$subgroup, levels = rev(forest_df$subgroup))
+
+
+
+ggplot(forest_df, aes(x = hr, y = row)) +
+  geom_vline(xintercept = 1, linetype = "dashed", color = "grey55") +
+  geom_errorbar(aes(xmin = lower, xmax = upper),
+                width = 0.22, orientation = "y", color = "#31688E") +
+  geom_point(size = 2.9, color = "#31688E") +
+  geom_text(aes(x = 14, label = lab), hjust = 0, size = 4) +
+  scale_x_log10(breaks = c(0, 1, 2, 4, 6, 8, 10, 12)) +
+  coord_cartesian(xlim = c(0.5, 12), clip = "off") +
+  labs(x = "Hazard ratio (MLH1 Low vs Rest, log scale)", y = NULL,
+       title = "TCGA Forest Plot") +
+  theme_minimal(base_size = 13) +
+  theme(plot.margin = margin(6, 130, 6, 6),
+        panel.grid.minor = element_blank(),
+        axis.text.y=element_text(size=12))
+
+ggsave(filename="Images/TCGA_forest_MLH1_v3.tiff", dpi=600)
+
+
+#MSH2
+subgroup_hr <- function(data, label) {
+  s <- summary(coxph(Surv(time, event) ~ MSH2_low, data = data))
+  data.frame(
+    subgroup = label,
+    n        = nrow(data),
+    events   = s$nevent,
+    hr       = s$conf.int[1, "exp(coef)"],
+    lower    = s$conf.int[1, "lower .95"],
+    upper    = s$conf.int[1, "upper .95"]
+  )
+}
+
+forest_df <- rbind(
+  subgroup_hr(surv.df, label="Overall"),
+  subgroup_hr(subset(surv.df, PAM50 == "LumA" | PAM50 == "LumB"), label="Luminal"),
+  subgroup_hr(subset(surv.df, PAM50 == "LumA"), label="LumA"),
+  subgroup_hr(subset(surv.df, PAM50 == "LumB"), label="LumB"),
+  subgroup_hr(subset(surv.df, PAM50 == "Basal"), label="Basal")
+)
+
+forest_df
+
+forest_df$lab <- sprintf("%.2f (%.2f, %.2f)", forest_df$hr, forest_df$lower,
+                         forest_df$upper)
+forest_df$row <- factor(forest_df$subgroup, levels = rev(forest_df$subgroup))
+
+
+
+ggplot(forest_df, aes(x = hr, y = row)) +
+  geom_vline(xintercept = 1, linetype = "dashed", color = "grey55") +
+  geom_errorbar(aes(xmin = lower, xmax = upper),
+                width = 0.22, orientation = "y", color = "#31688E") +
+  geom_point(size = 2.9, color = "#31688E") +
+  geom_text(aes(x = 14, label = lab), hjust = 0, size = 4) +
+  scale_x_log10(breaks = c(0, 1, 2, 4, 6, 8, 10, 12)) +
+  coord_cartesian(xlim = c(0.5, 12), clip = "off") +
+  labs(x = "Hazard ratio (MSH2 Low vs Rest, log scale)", y = NULL,
+       title = "TCGA Forest Plot") +
+  theme_minimal(base_size = 13) +
+  theme(plot.margin = margin(6, 130, 6, 6),
+        panel.grid.minor = element_blank(),
+        axis.text.y=element_text(size=12))
+
+ggsave(filename="Images/TCGA_forest_MLH1_v3.tiff", dpi=600)
