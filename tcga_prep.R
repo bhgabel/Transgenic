@@ -62,6 +62,73 @@ for(i in 1:length(gdc$MMR)){
 }
 gdc <- drop_na(gdc, "MMR")
 
+gdc$MLH1_low.subtype <- FALSE
+basal <- quantile(subset(gdc, PAM50=="Basal")$MLH1, probs=0.12)
+normal <- quantile(subset(gdc, PAM50=="Normal")$MLH1, probs=0.12)
+her2 <- quantile(subset(gdc, PAM50=="Her2")$MLH1, probs=0.12)
+luma <- quantile(subset(gdc, PAM50=="LumA")$MLH1, probs=0.12)
+lumb <- quantile(subset(gdc, PAM50=="LumB")$MLH1, probs=0.12)
+
+for(i in 1:length(gdc$MLH1)){
+  if(is.na(gdc$PAM50[[i]])){
+    #pass
+  }
+  else if(gdc$PAM50[[i]] == "Basal"){
+    gdc$MLH1_low.subtype[[i]] <- (gdc$MLH1[[i]] <= basal)
+  }
+  else if(gdc$PAM50[[i]] == "Normal"){
+    gdc$MLH1_low.subtype[[i]] <- (gdc$MLH1[[i]] <= normal)
+  }
+  else if(gdc$PAM50[[i]] == "Her2"){
+    gdc$MLH1_low.subtype[[i]] <- (gdc$MLH1[[i]] <= her2)
+  }
+  else if(gdc$PAM50[[i]] == "LumA"){
+    gdc$MLH1_low.subtype[[i]] <- (gdc$MLH1[[i]] <= luma)
+  }
+  else if(gdc$PAM50[[i]] == "LumB"){
+    gdc$MLH1_low.subtype[[i]] <- (gdc$MLH1[[i]] <= lumb)
+  }
+}
+
+gdc$MSH2_low.subtype <- FALSE
+basal <- quantile(subset(gdc, PAM50=="Basal")$MSH2, probs=0.08)
+normal <- quantile(subset(gdc, PAM50=="Normal")$MSH2, probs=0.08)
+her2 <- quantile(subset(gdc, PAM50=="Her2")$MSH2, probs=0.08)
+luma <- quantile(subset(gdc, PAM50=="LumA")$MSH2, probs=0.08)
+lumb <- quantile(subset(gdc, PAM50=="LumB")$MSH2, probs=0.08)
+
+for(i in 1:length(gdc$MSH2)){
+  if(is.na(gdc$PAM50[[i]])){
+    #pass
+  }
+  else if(gdc$PAM50[[i]] == "Basal"){
+    gdc$MSH2_low.subtype[[i]] <- (gdc$MSH2[[i]] <= basal)
+  }
+  else if(gdc$PAM50[[i]] == "Normal"){
+    gdc$MSH2_low.subtype[[i]] <- (gdc$MSH2[[i]] <= normal)
+  }
+  else if(gdc$PAM50[[i]] == "Her2"){
+    gdc$MSH2_low.subtype[[i]] <- (gdc$MSH2[[i]] <= her2)
+  }
+  else if(gdc$PAM50[[i]] == "LumA"){
+    gdc$MSH2_low.subtype[[i]] <- (gdc$MSH2[[i]] <= luma)
+  }
+  else if(gdc$PAM50[[i]] == "LumB"){
+    gdc$MSH2_low.subtype[[i]] <- (gdc$MSH2[[i]] <= lumb)
+  }
+}
+
+gdc$MMR.subtype <- factor("None", levels=c("MLH1", "MSH2", "None"))
+for(i in 1:length(gdc$MMR.subtype)){
+  if(gdc$MLH1_low[[i]] && gdc$MSH2_low[[i]]){
+    gdc$MMR.subtype[[i]] <- NA
+  } else if(gdc$MLH1_low[[i]]){
+    gdc$MMR.subtype[[i]] <- "MLH1"
+  } else if(gdc$MSH2_low[[i]]){
+    gdc$MMR.subtype[[i]] <- "MSH2"
+  }
+}
+
 
 #Assign factors for quintiles [0-20, 20-40,...]
 MLH1_probs <- quantile(gdc$MLH1, probs=c(0.2, 0.4, 0.6, 0.8), na.rm=T)
