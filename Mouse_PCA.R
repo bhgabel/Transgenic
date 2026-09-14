@@ -1,4 +1,5 @@
 library(ggbiplot)
+library(ggrepel)
 library(readxl)
 library(tidyverse)
 library(genefu)
@@ -9,7 +10,7 @@ library(biomaRt)
 #import datasets
 mouse <- read_xlsx("~/Documents/Haricharan/Transgenic/TgMiceRNA.xlsx", sheet="zscore")
 mouse$Gene.name <- str_to_upper(mouse$Gene.name)
-pam50 <- read.csv("~/Documents/Haricharan/PAM50 gene list.csv", header=F)
+pam50 <- read.csv("~/Documents/Haricharan/pam50_gene_list.csv", header=T)
 ddr <- read.csv("~/Documents/Haricharan/Transgenic/ddr_list.csv", header=F)
 ccycle <- read.csv("~/Documents/Haricharan/Transgenic/cell_cycle_list.csv", header=F)
 pam50$V1[16] <- "ORC6"
@@ -37,7 +38,8 @@ coding.genes <- biomaRt::getBM(attributes = c("external_gene_name", "chromosome_
 mt <- mt[colnames(mt) %in% coding.genes$external_gene_name]
 
 #import pt data
-tcga <- read.table("~/Documents/Haricharan/Transgenic/brca_tcga_gdc/data_mrna_seq_fpkm_zscores_ref_all_samples.txt", header=T)
+tcga <- read.table("~/Documents/Haricharan/Transgenic/brca_tcga_gdc/data_mrna_seq_fpkm.txt",
+                   header=T)
 tcga <- drop_na(tcga)
 
 #change from Entrez id to gene symbol
@@ -123,13 +125,36 @@ mmr <- subset(total, MMR != "None")
 
 write.csv(total, "mouse_pca_prepped.csv")
 
-total <- read.csv("mouse_pca_prepped.csv")
-#total[1] <- NULL
+total <- read.csv("mouse_pca_prepped.csv", header=T)
+total[1] <- NULL
+total <- dplyr::select(total, 1:4,any_of(pam50$probe))
 
+mt <- dplyr::select(mt, "sample", any_of(pam50$probe))
+test <- mt[-4,]
+
+pc.mouse <- prcomp(mt[,-1], center=T, scale.=T)
+
+ggbiplot::ggbiplot(pc.mouse, var.scale=1, groups=test$sample,
+                   ellipse=F, circle=F, var.axes=F) +
+  theme_bw() + labs(title="Transgenic Mouse PCA", color="Sample Type",
+                    x="PC1 (55.5% variance)", y="PC2 (20.4% variance)") +
+  geom_point(aes(color=test$sample, size=test$sample)) +
+  geom_text_repel(aes(label=mouse.pam50[-4]), point.padding=8) +
+  scale_color_manual(values=c('#31688E', '#E3E418'), labels=c("MLH1", "MSH2")) +
+  scale_size_manual(values=c(5, 5), guide="none") +
+  theme(legend.text=element_text(size=12),
+        legend.title=element_text(size=12),
+        plot.title=element_text(size=14),
+        axis.title=element_text(size=12)) +
+  guides(color=guide_legend(override.aes=list(size=4)))
+
+ggsave(filename="Images/mouse_PCA.svg", dpi=600)
 
 
 #all patients ± pam50
 pc.total <- prcomp(total[,-c(1:4)], center=T, scale.=T)
+tcga <- subset(total, type=="Human")
+pc.tcga <- prcomp(tcga[,-c(1:4)], center=T, scale.=T)
 pc.total.notpam <- prcomp(dplyr::select(total[,-c(1:4)], !any_of(pam50$Genes)), center=T, scale.=T)
 pc.total.pam <- prcomp(dplyr::select(total[,-c(1:4)], any_of(pam50$Genes)), center=T, scale.=T)
 
@@ -145,7 +170,7 @@ pc.mmr.pam50 <- prcomp(dplyr::select(mmr[,-c(1:6)], any_of(pam50$Genes)), center
 #basal pt - mlh1 vs not
 basal <- subset(total, pam50 == "Basal" & type != "Mouse")
 basal <- add_column(basal, id = row_number(basal$type), .before=1)
-pc.basal <- prcomp(dplyr::select(basal[,-c(1:6)], any_of(pam50$Genes)), center=T, scale.=T)
+pc.basal <- prcomp(dplyr::select(basal[,-c(1:4)], any_of(pam50$probe)), center=T, scale.=T)
 pc.basal.ddr <- prcomp(dplyr::select(basal[,-c(1:6)], any_of(ddr[,1])), center=T, scale.=T)
 #all pt - mlh1 + basal vs not
 
@@ -259,9 +284,14 @@ ggbiplot::ggbiplot(pc.mmr, var.scale=1, groups=mmr$combo,
 
 #basal - mlh1 vs not
 ggbiplot::ggbiplot(pc.basal, var.scale=1, groups=basal$MMR,
-         ellipse=F, circle=F, var.axes=F, varname.size=0) +
-  theme_bw() + labs(title="Basal Patients - Only PAM50") +
-  scale_color_manual(values=c("None"="grey", "MLH1"="red", "MSH2"="blue"), labels=c("None"="Rest"))
+         ellipse=F, circle=F, var.axes=F, varname.size=0, alpha=0) +
+  geom_point(aes(color=basal$MMR)) +
+  theme_bw() +
+  labs(title="Basal Patients by PAM50 Genes", color="MMR") +
+  scale_color_manual(values=c("None"="grey", "MLH1"='#3953A4', "MSH2"='#FECB67'),
+                     labels=c("None"="Rest"))
+
+ggsave("Images/TCGA_PCA_basal.tiff", dpi=600)
 
 ggbiplot::ggbiplot(pc.basal, var.scale=1, groups=basal$combo,
                    ellipse=F, circle=F, var.axes=F, varname.size=0, alpha=0) +
@@ -293,13 +323,7 @@ ggbiplot::ggbiplot(pc.total, var.scale=1, groups=(total$combo == "MSH2:Lum"),
   scale_shape_manual(values=c("Mouse"=3,"Human"=1)) + scale_size_manual(values=c("Mouse"=5,"Human"=1))
 
 
-ggbiplot::ggbiplot(pc.total, var.scale=1, groups=total$pam50,
-                   ellipse=F, circle=F, var.axes=F, varname.size=0, alpha=0.4) +
-  theme_bw() + labs(title="All Patients") +
-  geom_point(aes(shape=(total$combo == "MLH1:Basal" | total$combo == "MSH2:Lum"), color=total$pam50,
-                 size=(total$combo == "MLH1:Basal" | total$combo == "MSH2:Lum"))) +
-  scale_shape_manual(values=c("TRUE"=3,"FALSE"=1)) + scale_size_manual(values=c("TRUE"=5,"FALSE"=1)) +
-  theme(legend.position="none")
+
 
 ggbiplot::ggbiplot(pc.total, var.scale=1, groups=k.3,
                    ellipse=F, circle=F, var.axes=F, varname.size=0, alpha=0.4) +
@@ -308,6 +332,40 @@ ggbiplot::ggbiplot(pc.total, var.scale=1, groups=k.3,
                  size=(total$combo == "MLH1:Basal" | total$combo == "MSH2:Lum"))) +
   scale_shape_manual(values=c("TRUE"=3,"FALSE"=1)) + scale_size_manual(values=c("TRUE"=5,"FALSE"=1)) +
   theme(legend.position="none")
+
+#pca all pt, shape by MMR
+ggbiplot::ggbiplot(pc.tcga, var.scale=1, groups=NULL,
+                   ellipse=F, circle=F, var.axes=F, varname.size=0, alpha=0) +
+  geom_point(aes(shape=tcga$MMR, color=tcga$pam50, alpha=tcga$MMR)) +
+  theme_bw() + labs(title="All Patients by PAM50 Genes") +
+  scale_shape_manual(values=c("MLH1"=3, "MSH2"=2, "None"=1),
+                     labels=c("MLH1 Low", "MSH2 Low", "Rest")) +
+  scale_alpha_manual(values=c(1, 1, 0.4), guide="none") +
+  scale_color_manual(values=c('#CC79A7', '#c29f1f', '#27AD81', '#31688E', '#471164')) +
+  guides(shape=guide_legend(title="MMR", override.aes=list(size=2.5), order=2),
+         alpha="none",
+         color=guide_legend(title="PAM50", override.aes=list(size=2.5), order=1))
+
+ggsave("Images/TCGA_PCA.tiff", dpi=600)
+
+#pca all pt, add in mice
+pc.total <- reflect(pc.total)
+ggbiplot::ggbiplot(pc.total, var.scale=1, groups=NULL,
+                   ellipse=F, circle=F, var.axes=F, varname.size=0, alpha=0) +
+  geom_point(aes(shape=total$MMR, color=total$pam50,
+                 alpha=total$MMR, size=total$type)) +
+  theme_bw() + labs(title="All Patients and Mice by PAM50 Genes") +
+  scale_shape_manual(values=c("MLH1"=3, "MSH2"=24, "None"=1),
+                     labels=c("MLH1 Low", "MSH2 Low", "Rest")) +
+  scale_alpha_manual(values=c(1, 1, 0.4), guide="none") +
+  scale_size_manual(values=c("Mouse"=5, "Human"=1)) +
+  scale_color_manual(values=c('#CC79A7', '#c29f1f', '#27AD81', '#31688E', '#471164')) +
+  guides(shape=guide_legend(title="MMR", override.aes=list(size=2.5), order=2),
+         alpha="none",
+         size=guide_legend(title="Tumor Origin", override.aes=list(shape=21), order=3),
+         color=guide_legend(title="PAM50", override.aes=list(size=2.5), order=1))
+
+ggsave("Images/TCGA_PCA_mouse.tiff", dpi=600)
 
 
 
