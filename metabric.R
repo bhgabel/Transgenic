@@ -55,39 +55,46 @@ ggsave(filename="Images/Metabric_MSH2_low.tiff", dpi=600)
 
 pairwise.wilcox.test(meta$Mutations, meta$MMR, p.adjust.method="none")
 
-ggplot(data=subset(meta, !is.na(Mutations)), aes(x=MMR, y=Mutations, fill=MMR)) +
+ggplot(data=subset(meta, !is.na(Mutations)), aes(x=MMR.subtype, y=Mutations, fill=MMR)) +
   geom_boxplot() + scale_y_continuous(trans="log10") +
   theme_classic() +
   scale_x_discrete(labels=c("MLH1 Low", "MSH2 Low", "Rest")) +
   labs(x=NULL, y="Mutation Count (log10)",
        title="Tumor Mutation Burden (METABRIC)") +
-  scale_fill_discrete(guide="none", palette=c("#56B4E9", '#c29f1f', "grey")) +
+  scale_fill_discrete(guide="none", palette=c('#3953A4', '#FECB67', "grey")) +
   theme(axis.text.x=element_text(size=rel(1.5)),
         axis.title.x=element_text(size=rel(1.5)),
         axis.title.y=element_text(size=rel(1.5)),
         axis.text.y=element_text(size=rel(1.2)),
         plot.title=element_text(size=rel(1.5), hjust=0.5)) +
-  geom_signif(comparisons=list(c("MLH1","None"), c("MSH2", "None")),
-              annotations=c("*", "n.s."), textsize=5, y_position=c(2.05, 1.9))
+  geom_signif(comparisons=list(c("MLH1","None")),
+              annotations=c("*"), textsize=5, y_position=c(2.05))
 
-ggsave(filename="Images/Metabric_boxplot_TMB.svg", dpi=600)
+ggsave(filename="Images/Metabric_boxplot_TMB.tiff", dpi=600)
 
 ggplot(data=subset(meta, !is.na(Mutations)),
        aes(x=PAM50, y=Mutations, fill=MMR.subtype)) +
-  geom_boxplot() + scale_y_continuous(trans="log10") +
+  geom_boxplot() +
+  scale_y_continuous(trans="log10") +
   theme_classic() +
-  #scale_x_discrete(labels=c("MLH1 Low", "MSH2 Low", "Rest")) +
-  labs(x=NULL, y="Mutation Count (log10)",
+  labs(x=NULL, y="Mutation Count (log10)", fill="MMR",
        title="Tumor Mutation Burden (METABRIC)") +
-  scale_fill_discrete(palette=c("#56B4E9", '#c29f1f', "grey"),
+  scale_fill_discrete(palette=c('#3953A4', '#FECB67', "grey"),
                       labels=c("MLH1 Low", "MSH2 Low", "Rest")) +
-  theme(axis.text.x=element_text(size=rel(1.5)),
-        axis.title.x=element_text(size=rel(1.5)),
-        axis.title.y=element_text(size=rel(1.5)),
-        axis.text.y=element_text(size=rel(1.2)),
-        plot.title=element_text(size=rel(1.5), hjust=0.5))
+  theme(axis.text.x=element_text(size=16),
+        axis.title.y=element_text(size=18),
+        axis.text.y=element_text(size=14),
+        legend.title=element_text(size=14),
+        legend.text=element_text(size=14),
+        plot.title=element_text(size=19, hjust=0.5)) +
+  geom_signif(y_position=c(1.5),
+              xmin=c(3.75),
+              xmax=c(4.25),
+              annotation=c("*"), textsize=5,
+              tip_length=0.02)
 
-ggsave(filename="Images/Metabric_boxplot_TMB_by_subtype.svg", dpi=600)
+
+ggsave(filename="Images/Metabric_boxplot_TMB_by_subtype.tiff", dpi=600)
 
 
 #relevel factor for legend order
@@ -175,8 +182,8 @@ meta$MMR <- relevel(meta$MMR, ref="None")
 
 
 # surv.df <- meta
-# surv.df$time <- ifelse(surv.df$Relapse.Months >=10, 10, surv.df$Relapse.Months)
-# surv.df$event <- ifelse(surv.df$Relapse.Months >= 10, 0, surv.df$Relapse.Status.l)
+surv.df$time <- ifelse(surv.df$Relapse.Months >=11, 11, surv.df$Relapse.Months)
+surv.df$event <- ifelse(surv.df$Relapse.Months >= 11, 0, surv.df$Relapse.Status.l)
 
 # surv.df <- read.csv("Relapse_Free_METABRIC_combined_Sv_070626.csv", header=T)
 # surv.df$time <- surv.df$time/12
@@ -213,21 +220,16 @@ for(i in 1:length(surv.df$PAM50)){
 surv.df$combo.mlh1 <- factor(NA, levels=c("Lum:None", "Lum:MLH1",
                                           "Basal:None", "Basal:MLH1"))
 
-lum.mlh1 <- quantile(subset(meta, PAM50 == "LumA" | PAM50 == "LumB")$MLH1, probs=0.12)
-basal.mlh1 <- quantile(subset(meta, PAM50 == "Basal")$MLH1, probs=0.12)
-
-surv.df$basal.low <- (surv.df$MLH1 <= basal.mlh1)
-
 for(i in 1:length(surv.df$PAM50)){
   if(is.na(surv.df$PAM50[[i]])){
     surv.df$combo.mlh1[[i]] <- NA
   }
   else if(surv.df$PAM50[[i]] == "Basal"){
-    surv.df$combo.mlh1[[i]] <- ifelse(surv.df$MLH1[[i]] <= basal.mlh1,
+    surv.df$combo.mlh1[[i]] <- ifelse(surv.df$MLH1_low.subtype[[i]],
                                       "Basal:MLH1", "Basal:None")
   }
-  else if(surv.df$PAM50[[i]] == "LumA" | surv.df$PAM50[[i]] == "LumB"){
-    surv.df$combo.mlh1[[i]] <- ifelse(surv.df$MLH1[[i]] <= lum.mlh1,
+  else if(surv.df$PAM50[[i]] == "LumA"){
+    surv.df$combo.mlh1[[i]] <- ifelse(surv.df$MLH1_low.subtype[[i]],
                                       "Lum:MLH1", "Lum:None")
   }
   else{
@@ -238,21 +240,16 @@ for(i in 1:length(surv.df$PAM50)){
 surv.df$combo.msh2 <- factor(NA, levels=c("Lum:None", "Lum:MSH2",
                                           "Basal:None", "Basal:MSH2"))
 
-lum.msh2 <- quantile(subset(meta, PAM50 == "LumA" | PAM50 == "LumB")$MSH2, probs=0.08)
-basal.msh2 <- quantile(subset(meta, PAM50 == "Basal")$MSH2, probs=0.08)
-
-surv.df$basal.low <- (surv.df$MSH2 <= basal.msh2)
-
 for(i in 1:length(surv.df$PAM50)){
   if(is.na(surv.df$PAM50[[i]])){
     surv.df$combo.msh2[[i]] <- NA
   }
   else if(surv.df$PAM50[[i]] == "Basal"){
-    surv.df$combo.msh2[[i]] <- ifelse(surv.df$MSH2[[i]] <= basal.msh2,
+    surv.df$combo.msh2[[i]] <- ifelse(surv.df$MSH2_low.subtype[[i]],
                                       "Basal:MSH2", "Basal:None")
   }
-  else if(surv.df$PAM50[[i]] == "LumA" | surv.df$PAM50[[i]] == "LumB"){
-    surv.df$combo.msh2[[i]] <- ifelse(surv.df$MSH2[[i]] <= lum.msh2,
+  else if(surv.df$PAM50[[i]] == "LumA"){
+    surv.df$combo.msh2[[i]] <- ifelse(surv.df$MSH2_low.subtype[[i]],
                                       "Lum:MSH2", "Lum:None")
   }
   else{
@@ -269,7 +266,7 @@ ggsurvplot(fit, data=surv.df, pval=T,
 
 #MLH1
 
-fit <- survfit(Surv(time, event) ~ MLH1_low,
+fit <- survfit(Surv(time, event) ~ MLH1_low.subtype,
                data=subset(surv.df, PAM50 == "LumA"))
 ggsurvplot(fit, data=subset(surv.df, PAM50 == "LumA"), pval=T,
            xlim=c(0,10), xlab="Time (Years)", break.time.by=1,
@@ -278,7 +275,7 @@ ggsurvplot(fit, data=subset(surv.df, PAM50 == "LumA"), pval=T,
            title="Metabric (Luminal A)", palette=c("black", "#31688E"))$plot +
   theme(plot.title = element_text(hjust=0.5, size=16))
 
-fit <- survfit(Surv(time, event) ~ MLH1_low,
+fit <- survfit(Surv(time, event) ~ MLH1_low.subtype,
                data=subset(surv.df, PAM50 == "LumB"))
 ggsurvplot(fit, data=subset(surv.df, PAM50 == "LumB"), pval=T,
            xlim=c(0,10), xlab="Time (Years)", break.time.by=1,
@@ -287,8 +284,8 @@ ggsurvplot(fit, data=subset(surv.df, PAM50 == "LumB"), pval=T,
            title="Metabric (Luminal B)", palette=c("black", "#31688E"))$plot +
   theme(plot.title = element_text(hjust=0.5, size=16))
 
-fit <- survfit(Surv(time, event) ~ MLH1_low,
-               data=subset(surv.df, PAM50 == "LumA" | PAM50 == "LumB"))
+fit <- survfit(Surv(time, event) ~ MLH1_low.subtype,
+               data=subset(surv.df, (PAM50 == "LumA" | PAM50 == "LumB")))
 ggsurvplot(fit, data=subset(surv.df, PAM50 == "LumA" | PAM50 == "LumB"), pval=T,
            xlim=c(0,10), xlab="Time (Years)", break.time.by=1,
            legend.labs=c("Rest", "Low MLH1"), font.legend=c(13),
@@ -337,7 +334,32 @@ ggsurvplot(fit, data=surv.df,
            label="Overall: p < 0.001\nLuminal: HR = 1.33, p = 0.09\nBasal: HR = 1.05, p = 0.87",
            x=0.1, y=0.15, hjust=0)
 
-ggsave(filename="Images/Metabric_survival_MLH1_Combo_v1.svg", dpi=600)
+ggsave(filename="Images/Metabric_survival_MLH1_Combo_supp_v1.svg", dpi=600)
+
+fit <- survfit(Surv(time, event) ~ combo.mlh1,
+               data=surv.df)
+ggsurvplot(fit, data=surv.df,
+           pval=F, xlim=c(0,10), break.time.by=1,
+           xlab="Time (Years)", ylab="Disease Specific Survival",
+           legend.labs=c("Luminal A Rest\n(n=644)", "Luminal A MLH1\n(n=88)",
+                         "Basal Rest\n(n=260)", "Basal MLH1\n(n=36)"),
+           linetype=c(1,2,1,2), censor.shape=124, censor.size=3, censor=F,
+           surv.scale="percent",
+           legend.title="Luminal A                              Basal",
+           subtitle="(METABRIC)",
+           title="Probability of Survival with MLH1 Loss",
+           palette=c('#009E73', '#009E73', '#CC79A7', '#CC79A7'))$plot +
+  theme(plot.title=element_text(hjust=0.5, size=16, face="bold", family="Arial"),
+        plot.subtitle=element_text(hjust=0.5, size=14, face="bold"),
+        #legend.title=element_text(hjust=0.5, size=12),
+        legend.title=element_blank(),
+        legend.key.size=unit(2.2, "line"), legend.location="plot",
+        legend.position="bottom", legend.title.position="top") +
+  annotate("text",
+           label="Overall: p < 0.001\nLuminal A: HR = 2.07, p = 0.001\nBasal: HR = 1.05, p = 0.87",
+           x=0.1, y=0.15, hjust=0)
+
+ggsave(filename="Images/Metabric_survival_MLH1_Combo_v1.tiff", dpi=600)
 
 
 #MSH2
@@ -407,6 +429,31 @@ ggsurvplot(fit, data=surv.df,
         legend.position="bottom", legend.title.position="top") +
   annotate("text",
            label="Overall: p < 0.001\nLuminal: HR = 1.40, p = 0.10\nBasal: HR = 0.75, p = 0.50",
+           x=0.1, y=0.15, hjust=0)
+
+ggsave(filename="Images/Metabric_survival_MSH2_Combo_supp_v1.tiff", dpi=600)
+
+fit <- survfit(Surv(time, event) ~ combo.msh2,
+               data=surv.df)
+ggsurvplot(fit, data=surv.df,
+           pval=F, xlim=c(0,10), break.time.by=1,
+           xlab="Time (Years)", ylab="Disease Specific Survival",
+           legend.labs=c("Luminal A Rest\n(n=672)", "Luminal A MSH2\n(n=60)",
+                         "Basal Rest\n(n=272)", "Basal MSH2\n(n=24)"),
+           linetype=c(1,2,1,2), censor.shape=124, censor.size=3, censor=F,
+           surv.scale="percent",
+           legend.title="Luminal A                               Basal",
+           subtitle="(METABRIC)",
+           title="Probability of Survival with MSH2 Loss",
+           palette=c('#009E73', '#009E73', '#CC79A7', '#CC79A7'))$plot +
+  theme(plot.title=element_text(hjust=0.5, size=16, face="bold", family="Arial"),
+        plot.subtitle=element_text(hjust=0.5, size=14, face="bold"),
+        #legend.title=element_text(hjust=0.5, size=12),
+        legend.title=element_blank(),
+        legend.key.size=unit(2.2, "line"), legend.location="plot",
+        legend.position="bottom", legend.title.position="top") +
+  annotate("text",
+           label="Overall: p < 0.001\nLuminal A: HR = 0.89, p = 0.76\nBasal: HR = 0.75, p = 0.50",
            x=0.1, y=0.15, hjust=0)
 
 ggsave(filename="Images/Metabric_survival_MSH2_Combo_v1.tiff", dpi=600)
