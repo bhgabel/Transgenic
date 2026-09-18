@@ -746,7 +746,7 @@ ggsave(filename="Images/TCGA_forest_MSH2_v2.tiff", dpi=600)
 #other forest plotting method
 #MLH1
 subgroup_hr <- function(data, label) {
-  s <- summary(coxph(Surv(time, event) ~ MLH1_low, data = data))
+  s <- summary(coxph(Surv(time, event) ~ MLH1_low.subtype, data = data))
   data.frame(
     subgroup = label,
     n        = nrow(data),
@@ -762,7 +762,7 @@ forest_df <- rbind(
   subgroup_hr(subset(surv.df, PAM50 == "LumA" | PAM50 == "LumB"), label="Luminal"),
   subgroup_hr(subset(surv.df, PAM50 == "LumA"), label="LumA"),
   subgroup_hr(subset(surv.df, PAM50 == "LumB"), label="LumB"),
-  subgroup_hr(subset(surv.df, PAM50 == "Her2"), label="Her2"),
+  #subgroup_hr(subset(surv.df, PAM50 == "Her2"), label="Her2"),
   subgroup_hr(subset(surv.df, PAM50 == "Basal"), label="Basal")
 )
 
@@ -777,17 +777,17 @@ forest_df$row <- factor(forest_df$subgroup, levels = rev(forest_df$subgroup))
 ggplot(forest_df, aes(x = hr, y = row)) +
   geom_vline(xintercept = 1, linetype = "dashed", color = "grey55") +
   geom_errorbar(aes(xmin = lower, xmax = upper),
-                width = 0.22, orientation = "y", color = "#31688E") +
-  geom_point(size = 2.9, color = "#31688E") +
-  geom_text(aes(x = 14, label = lab), hjust = 0, size = 4) +
+                width = 0.22, orientation = "y", color = '#3953A4') +
+  geom_point(size = 2.9, color = '#3953A4') +
+  geom_text(aes(x = 8, label = lab), hjust = 0, size = 4.5) +
   scale_x_log10(breaks = c(0, 1, 2, 4, 6, 8, 10, 12)) +
-  coord_cartesian(xlim = c(0.5, 12), clip = "off") +
+  coord_cartesian(xlim = c(0.25, 6.5), clip = "off") +
   labs(x = "Hazard ratio (MLH1 Low vs Rest, log scale)", y = NULL,
        title = "TCGA Forest Plot") +
   theme_minimal(base_size = 13) +
   theme(plot.margin = margin(6, 130, 6, 6),
         panel.grid.minor = element_blank(),
-        axis.text.y=element_text(size=12))
+        axis.text.y=element_text(size=13))
 
 ggsave(filename="Images/TCGA_forest_MLH1_v3.tiff", dpi=600)
 
