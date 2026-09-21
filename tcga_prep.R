@@ -120,11 +120,11 @@ for(i in 1:length(gdc$MSH2)){
 
 gdc$MMR.subtype <- factor("None", levels=c("MLH1", "MSH2", "None"))
 for(i in 1:length(gdc$MMR.subtype)){
-  if(gdc$MLH1_low[[i]] && gdc$MSH2_low[[i]]){
+  if(gdc$MLH1_low.subtype[[i]] && gdc$MSH2_low.subtype[[i]]){
     gdc$MMR.subtype[[i]] <- NA
-  } else if(gdc$MLH1_low[[i]]){
+  } else if(gdc$MLH1_low.subtype[[i]]){
     gdc$MMR.subtype[[i]] <- "MLH1"
-  } else if(gdc$MSH2_low[[i]]){
+  } else if(gdc$MSH2_low.subtype[[i]]){
     gdc$MMR.subtype[[i]] <- "MSH2"
   }
 }
