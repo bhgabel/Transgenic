@@ -338,6 +338,39 @@ ggplot(data=gdc, aes(x=HR, fill=MSI)) +
   geom_bar(position="fill", stat="count") +
   theme_classic() + labs(title="MSI Classification")
 
+#PAM50 by gene expression quintiles
+ggplot(data=subset(gdc, !is.na(PAM50)), aes(x=MLH1_quin, fill=PAM50)) +
+  geom_bar(stat="count", position="fill", color="black") +
+  theme_classic() +
+  labs(title="TCGA", y="Percentage", x="MLH1 Expression Quintiles") +
+  scale_x_discrete(labels=c("0-20", "20-40", "40-60", "60-80", "80-100")) +
+  scale_fill_manual(values=c('#E3E418', '#27AD81', '#31688E', '#443A83','#471164')) +
+  scale_y_continuous(expand=c(0,0), labels=c("0%", "25%", "50%", "75%", "100%")) +
+  theme(axis.text.x=element_text(size=rel(1.5)),
+        axis.title.x=element_text(size=rel(1.5)),
+        axis.text.y=element_text(size=rel(1.3)),
+        axis.title.y=element_text(size=rel(1.5)),
+        plot.title=element_text(size=rel(1.5), hjust=0.3),
+        legend.text=element_text(size=rel(1.2)),
+        legend.title=element_text(size=rel(1.3)))
+
+ggplot(data=subset(gdc, !is.na(PAM50)), aes(x=MSH2_quin, fill=PAM50)) +
+  geom_bar(stat="count", position="fill", color="black") +
+  theme_classic() +
+  labs(title="TCGA", y="Percentage", x="MSH2 Expression Quintiles") +
+  scale_x_discrete(labels=c("0-20", "20-40", "40-60", "60-80", "80-100")) +
+  scale_fill_manual(values=c('#E3E418', '#27AD81', '#31688E', '#443A83','#471164')) +
+  scale_y_continuous(expand=c(0,0), labels=c("0%", "25%", "50%", "75%", "100%")) +
+  theme(axis.text.x=element_text(size=rel(1.5)),
+        axis.title.x=element_text(size=rel(1.5)),
+        axis.text.y=element_text(size=rel(1.3)),
+        axis.title.y=element_text(size=rel(1.5)),
+        plot.title=element_text(size=rel(1.5), hjust=0.3),
+        legend.text=element_text(size=rel(1.2)),
+        legend.title=element_text(size=rel(1.3)))
+
+ggsave("Images/TCGA_enrichment_MHS2_quintiles.png", dpi=600)
+
 #relevel factor for legend order
 gdc$PAM50 <- factor(gdc$PAM50, levels=c("Basal", "Normal", "Her2", "LumA", "LumB"))
 

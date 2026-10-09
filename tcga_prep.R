@@ -133,32 +133,32 @@ for(i in 1:length(gdc$MMR.subtype)){
 #Assign factors for quintiles [0-20, 20-40,...]
 MLH1_probs <- quantile(gdc$MLH1, probs=c(0.2, 0.4, 0.6, 0.8), na.rm=T)
 MSH2_probs <- quantile(gdc$MSH2, probs=c(0.2, 0.4, 0.6, 0.8), na.rm=T)
-gdc$MLH1_quin <- factor("1st", levels=c("1st", "2nd", "3rd", "4th", "5th"))
-gdc$MSH2_quin <- factor("1st", levels=c("1st", "2nd", "3rd", "4th", "5th"))
+gdc$MLH1_quin <- factor(NA, levels=c(1:5))
+gdc$MSH2_quin <- factor(NA, levels=c(1:5))
 for(i in 1:length(gdc$MLH1_quin)){
   if(gdc$MLH1[[i]] < MLH1_probs[[1]]){
-    gdc$MLH1_quin[[i]] <- "1st"
+    gdc$MLH1_quin[[i]] <- 1
   } else if(gdc$MLH1[[i]] <= MLH1_probs[[2]]){
-    gdc$MLH1_quin[[i]] <- "2nd"
+    gdc$MLH1_quin[[i]] <- 2
   } else if(gdc$MLH1[[i]] <= MLH1_probs[[3]]){
-    gdc$MLH1_quin[[i]] <- "3rd"
+    gdc$MLH1_quin[[i]] <- 3
   } else if(gdc$MLH1[[i]] <= MLH1_probs[[4]]){
-    gdc$MLH1_quin[[i]] <- "4th"
+    gdc$MLH1_quin[[i]] <- 4
   } else{
-    gdc$MLH1_quin[[i]] <- "5th"}
+    gdc$MLH1_quin[[i]] <- 5}
 }
 
 for(i in 1:length(gdc$MSH2_quin)){
   if(gdc$MSH2[[i]] < MSH2_probs[[1]]){
-    gdc$MSH2_quin[[i]] <- "1st"
+    gdc$MSH2_quin[[i]] <- 1
   } else if(gdc$MSH2[[i]] <= MSH2_probs[[2]]){
-    gdc$MSH2_quin[[i]] <- "2nd"
+    gdc$MSH2_quin[[i]] <- 2
   } else if(gdc$MSH2[[i]] <= MSH2_probs[[3]]){
-    gdc$MSH2_quin[[i]] <- "3rd"
+    gdc$MSH2_quin[[i]] <- 3
   } else if(gdc$MSH2[[i]] <= MSH2_probs[[4]]){
-    gdc$MSH2_quin[[i]] <- "4th"
+    gdc$MSH2_quin[[i]] <- 4
   } else{
-    gdc$MSH2_quin[[i]] <- "5th"}
+    gdc$MSH2_quin[[i]] <- 5}
 }
 
 #Assign MSI factors

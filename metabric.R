@@ -93,7 +93,8 @@ ggsave(filename="Images/Metabric_boxplot_TMB_by_subtype_not_MMR.tiff", dpi=600)
 #relevel factor for legend order
 meta$PAM50 <- factor(meta$PAM50, levels=c("Basal", "Normal", "Her2", "LumA", "LumB"))
 
-#stacked columns - enrichment plots
+#Stacked columns ----
+#enrichment plots
 ggplot(data=subset(meta, PAM50 != "NC" & PAM50 != "claudin-low"), aes(x=MMR, fill=PAM50)) +
   geom_bar(position="fill", stat="count") +
   theme_classic() + labs(title="Metabric - PAM50 Subtype by Mismatch Repair Deficiency", y="Proportion") +
@@ -164,6 +165,40 @@ chisq.test(table(meta$PAM50, meta$MMR), simulate.p.value=T)
 chisq.test(table(meta$PAM50 == "Basal", meta$MMR == "MLH1"))
 chisq.test(table(meta$PAM50 == "LumA", meta$MMR == "MSH2"))
 chisq.test(table(meta$PAM50 == "LumA" | meta$PAM50 == "LumB", meta$MMR == "MSH2"))
+
+
+#PAM50 by gene expression quintiles
+ggplot(data=subset(meta, !is.na(PAM50)), aes(x=MLH1_quin, fill=PAM50)) +
+  geom_bar(stat="count", position="fill", color="black") +
+  theme_classic() +
+  labs(title="METABRIC", y="Percentage", x="MLH1 Expression Quintiles") +
+  scale_x_discrete(labels=c("0-20", "20-40", "40-60", "60-80", "80-100")) +
+  scale_fill_manual(values=c('#E3E418', '#27AD81', '#31688E', '#443A83','#471164')) +
+  scale_y_continuous(expand=c(0,0), labels=c("0%", "25%", "50%", "75%", "100%")) +
+  theme(axis.text.x=element_text(size=rel(1.5)),
+        axis.title.x=element_text(size=rel(1.5)),
+        axis.text.y=element_text(size=rel(1.3)),
+        axis.title.y=element_text(size=rel(1.5)),
+        plot.title=element_text(size=rel(1.5), hjust=0.3),
+        legend.text=element_text(size=rel(1.2)),
+        legend.title=element_text(size=rel(1.3)))
+
+ggplot(data=subset(meta, !is.na(PAM50)), aes(x=MSH2_quin, fill=PAM50)) +
+  geom_bar(stat="count", position="fill", color="black") +
+  theme_classic() +
+  labs(title="METABRIC", y="Percentage", x="MSH2 Expression Quintiles") +
+  scale_x_discrete(labels=c("0-20", "20-40", "40-60", "60-80", "80-100")) +
+  scale_fill_manual(values=c('#E3E418', '#27AD81', '#31688E', '#443A83','#471164')) +
+  scale_y_continuous(expand=c(0,0), labels=c("0%", "25%", "50%", "75%", "100%")) +
+  theme(axis.text.x=element_text(size=rel(1.5)),
+        axis.title.x=element_text(size=rel(1.5)),
+        axis.text.y=element_text(size=rel(1.3)),
+        axis.title.y=element_text(size=rel(1.5)),
+        plot.title=element_text(size=rel(1.5), hjust=0.3),
+        legend.text=element_text(size=rel(1.2)),
+        legend.title=element_text(size=rel(1.3)))
+
+ggsave("Images/Metabric_enrichment_MHS2_quintiles.png", dpi=600)
 
 #Survival plots ----
 #colnames(meta)[c(61,62)] <- c("Surv.Status", "Relapse.Months")

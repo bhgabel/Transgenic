@@ -131,6 +131,37 @@ for(i in 1:length(meta$HR)){
   }
 }
 
+#Assign factors for quintiles [0-20, 20-40,...]
+MLH1_probs <- quantile(meta$MLH1, probs=c(0.2, 0.4, 0.6, 0.8), na.rm=T)
+MSH2_probs <- quantile(meta$MSH2, probs=c(0.2, 0.4, 0.6, 0.8), na.rm=T)
+meta$MLH1_quin <- factor(NA, levels=c(1:5))
+meta$MSH2_quin <- factor(NA, levels=c(1:5))
+for(i in 1:length(meta$MLH1_quin)){
+  if(meta$MLH1[[i]] < MLH1_probs[[1]]){
+    meta$MLH1_quin[[i]] <- 1
+  } else if(meta$MLH1[[i]] <= MLH1_probs[[2]]){
+    meta$MLH1_quin[[i]] <- 2
+  } else if(meta$MLH1[[i]] <= MLH1_probs[[3]]){
+    meta$MLH1_quin[[i]] <- 3
+  } else if(meta$MLH1[[i]] <= MLH1_probs[[4]]){
+    meta$MLH1_quin[[i]] <- 4
+  } else{
+    meta$MLH1_quin[[i]] <- 5}
+}
+
+for(i in 1:length(meta$MSH2_quin)){
+  if(meta$MSH2[[i]] < MSH2_probs[[1]]){
+    meta$MSH2_quin[[i]] <- 1
+  } else if(meta$MSH2[[i]] <= MSH2_probs[[2]]){
+    meta$MSH2_quin[[i]] <- 2
+  } else if(meta$MSH2[[i]] <= MSH2_probs[[3]]){
+    meta$MSH2_quin[[i]] <- 3
+  } else if(meta$MSH2[[i]] <= MSH2_probs[[4]]){
+    meta$MSH2_quin[[i]] <- 4
+  } else{
+    meta$MSH2_quin[[i]] <- 5}
+}
+
 #pam50
 meta$Pam50 <- as.factor(meta$Pam50)
 
