@@ -12,7 +12,7 @@ mouse <- read_xlsx("~/Documents/Haricharan/Transgenic/TgMiceRNA.xlsx", sheet="zs
 mouse$Gene.name <- str_to_upper(mouse$Gene.name)
 pam50 <- read.csv("~/Documents/Haricharan/pam50_gene_list.csv", header=T)
 ddr <- read.csv("~/Documents/Haricharan/Transgenic/ddr_list.csv", header=F)
-ccycle <- read.csv("~/Documents/Haricharan/Transgenic/cell_cycle_list.csv", header=F)
+ccycle <- read.csv("~/Documents/Haricharan/Transgenic/cell_cycle_list.csv", header=T)
 pam50$V1[16] <- "ORC6"
 colnames(pam50) <- "Genes"
 
@@ -43,7 +43,8 @@ tcga <- read.table("~/Documents/Haricharan/Transgenic/brca_tcga_gdc/data_mrna_se
 tcga <- drop_na(tcga)
 
 #change from Entrez id to gene symbol
-genes <- clusterProfiler::bitr(tcga$Entrez_Gene_Id, fromType="ENTREZID", toType="SYMBOL", OrgDb=org.Hs.eg.db)
+genes <- clusterProfiler::bitr(tcga$Entrez_Gene_Id, fromType="ENTREZID",
+                               toType="SYMBOL", OrgDb=org.Hs.eg.db)
 
 tcga$Entrez_Gene_Id <- as.character(tcga$Entrez_Gene_Id)
 tcga <- left_join(genes, tcga, by=c("ENTREZID" = "Entrez_Gene_Id"))
@@ -123,11 +124,11 @@ for(i in 1:length(total$combo)){
 mmr <- subset(total, MMR != "None")
 
 
-write.csv(total, "mouse_pca_prepped.csv")
+write.csv(total, "mouse_pca_prepped.csv", row.names=F)
 
 total <- read.csv("mouse_pca_prepped.csv", header=T)
 total[1] <- NULL
-total <- dplyr::select(total, 1:4,any_of(pam50$probe))
+#total <- dplyr::select(total, 1:4, any_of(c(pam50$probe, ccycle$Gene)))
 
 mt <- dplyr::select(mt, "sample", any_of(pam50$probe))
 test <- mt[-4,]
@@ -171,12 +172,13 @@ pc.mmr.pam50 <- prcomp(dplyr::select(mmr[,-c(1:6)], any_of(pam50$Genes)), center
 basal <- subset(total, pam50 == "Basal" & type != "Mouse")
 basal <- add_column(basal, id = row_number(basal$type), .before=1)
 pc.basal <- prcomp(dplyr::select(basal[,-c(1:4)], any_of(pam50$probe)), center=T, scale.=T)
+pc.basal.cc <- prcomp(dplyr::select(basal[,-c(1:4)], any_of(ccycle$Gene)), center=T, scale.=T)
 pc.basal.ddr <- prcomp(dplyr::select(basal[,-c(1:6)], any_of(ddr[,1])), center=T, scale.=T)
 #all pt - mlh1 + basal vs not
 
 #luminal pt - msh2 vs not
-luminal <- subset(total, (pam50 == "LumA" | pam50 == "LumB") & type != "Mouse")
-pc.luminal <- prcomp(dplyr::select(luminal[,-c(1:6)], any_of(pam50$Genes)), center=T, scale.=T)
+luminal <- subset(total, (pam50 == "LumA") & type != "Mouse")
+pc.luminal <- prcomp(dplyr::select(luminal[,-c(1:4)], any_of(pam50$probe)), center=T, scale.=T)
 pc.luminal.notpam <- prcomp(dplyr::select(luminal[,-c(1:6)], !any_of(pam50$Genes)), center=T, scale.=T)
 combo <- paste(luminal$MMR, luminal$pam50, sep=":")
 #all pt - msh2 + lum vs not
@@ -187,6 +189,15 @@ not.basal.mmr <- subset(not.basal, MMR != "None")
 pc.not.basal <- prcomp(not.basal[,-(1:6)], center=T, scale.=T)
 pc.not.basal <- prcomp(select(not.basal[,-(1:6)], any_of(pam50$Genes)), center=T, scale.=T)
 pc.not.basal.mmr <- prcomp(select(not.basal.mmr[,-(1:6)], any_of(pam50$Genes)), center=T, scale.=T)
+
+#cell cycle genes
+cellcycle <- dplyr::select(total, 1:4, any_of(ccycle$Gene)) %>% 
+  subset(type != "Mouse")
+pc.ccycle <- prcomp(cellcycle[,-(1:3)],
+                    center=F, scale.=F, rank.=5)
+ggbiplot(pc.ccycle, groups=cellcycle$pam50,
+         ellipse=F, var.axes=F, varname.size=0, alpha=0.8) +
+  theme_bw() + labs(title="TCGA by Cell Cycle Genes")
 #plot PCA's
 
 #validation clustering
@@ -283,11 +294,19 @@ ggbiplot::ggbiplot(pc.mmr, var.scale=1, groups=mmr$combo,
   scale_shape_manual(values=c(3,1)) + scale_size_manual(values=c("Mouse"=5,"Human"=1))
 
 #basal - mlh1 vs not
-ggbiplot::ggbiplot(pc.basal, var.scale=1, groups=basal$MMR,
+ggbiplot::ggbiplot(pc.basal, var.scale=1,
          ellipse=F, circle=F, var.axes=F, varname.size=0, alpha=0) +
   geom_point(aes(color=basal$MMR)) +
   theme_bw() +
   labs(title="Basal Patients by PAM50 Genes", color="MMR") +
+  scale_color_manual(values=c("None"="grey", "MLH1"='#3953A4', "MSH2"='#FECB67'),
+                     labels=c("None"="Rest", "MLH1"="MLH1 Low", "MSH2"="MSH2 Low"))
+
+ggbiplot::ggbiplot(pc.basal.cc, var.scale=1,
+                   ellipse=F, circle=F, var.axes=F, varname.size=0, alpha=0) +
+  geom_point(aes(color=basal$MMR)) +
+  theme_bw() +
+  labs(title="Basal Patients by Cell Cycle Genes", color="MMR") +
   scale_color_manual(values=c("None"="grey", "MLH1"='#3953A4', "MSH2"='#FECB67'),
                      labels=c("None"="Rest"))
 
@@ -320,9 +339,18 @@ ggbiplot::ggbiplot(pc.total, var.scale=1, groups=(total$combo == "MSH2:Lum"),
                    ellipse=F, circle=F, var.axes=F, varname.size=0) +
   theme_bw() + labs(title="MSH2:Lum vs Rest") +
   geom_point(aes(shape=total$type, color=(total$combo == "MSH2:Lum"), size=total$type)) +
-  scale_shape_manual(values=c("Mouse"=3,"Human"=1)) + scale_size_manual(values=c("Mouse"=5,"Human"=1))
+  scale_shape_manual(values=c("Mouse"=3,"Human"=1)) +
+  scale_size_manual(values=c("Mouse"=5,"Human"=1))
 
+ggbiplot::ggbiplot(pc.luminal, var.scale=1,
+                   ellipse=F, circle=F, var.axes=F, varname.size=0, alpha=0) +
+  geom_point(aes(color=luminal$MMR)) +
+  theme_bw() +
+  labs(title="Luminal A Patients by PAM50 Genes", color="MMR") +
+  scale_color_manual(values=c("None"="grey", "MLH1"='#3953A4', "MSH2"='#FECB67'),
+                     labels=c("None"="Rest", "MLH1"="MLH1 Low", "MSH2"="MSH2 Low"))
 
+ggsave("Images/TCGA_PCA_luminal.tiff", dpi=600)
 
 
 ggbiplot::ggbiplot(pc.total, var.scale=1, groups=k.3,

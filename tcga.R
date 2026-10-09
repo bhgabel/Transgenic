@@ -1,6 +1,5 @@
 library(tidyverse)
 library(ggsignif)
-library(car)
 library(survival)
 library(survminer)
 library(forestmodel)
@@ -156,7 +155,7 @@ ggsave(filename="Images/TCGA_boxplot_TMB.tiff", dpi=600)
 for(pam in levels(gdc$PAM50)){
   temp <- subset(gdc, PAM50 == pam)
   print(pam)
-  print(pairwise.wilcox.test(temp$Mutations, temp$MMR.subtype, p.adjust.method="none"))
+  print(pairwise.wilcox.test(temp$Mutations, temp$MMR, p.adjust.method="none"))
 }
 rm(temp)
 
@@ -185,6 +184,25 @@ ggplot(data=subset(gdc, !is.na(Mutations) & !is.na(PAM50) & !is.na(MMR.subtype))
               tip_length=0.02)
 
 ggsave(filename="Images/TCGA_boxplot_TMB_by_subtype.tiff", dpi=600)
+
+
+
+ggplot(data=subset(gdc, !is.na(Mutations) & !is.na(PAM50) & !is.na(MMR.subtype)),
+       aes(x=PAM50, y=Mutations, fill=PAM50)) +
+  geom_boxplot(alpha=0.9) + scale_y_continuous(trans="log10") +
+  theme_classic() +
+  labs(x=NULL, y="Mutation Count (log10)",
+       title="Tumor Mutation Burden (TCGA)", fill="PAM50") +
+  scale_fill_manual(values=c('#CC79A7', '#c29f1f', '#27AD81', '#31688E', '#471164')) +
+  theme(axis.text.x=element_text(size=16),
+        axis.title.y=element_text(size=18),
+        axis.text.y=element_text(size=14),
+        legend.title=element_text(size=14),
+        legend.text=element_text(size=14),
+        plot.title=element_text(size=19, hjust=0.5))
+
+pairwise.wilcox.test(gdc$Mutations, gdc$PAM50, p.adjust.method="none")
+ggsave(filename="Images/TCGA_boxplot_TMB_by_subtype_not_MMR.tiff", dpi=600)
 
 ##PAM50 subtypes, MLH1 vs MSH2 vs rest
 ggplot(data=gdc, aes(x=MMR, y=Mutations, fill=PAM50)) +
@@ -389,6 +407,14 @@ print("MSH2 low vs rest - Luminal:")
 chisq.test(table(gdc$PAM50 == "LumA" | gdc$PAM50 == "LumB", gdc$MMR == "MSH2"))
 sink()
 
+for(subtype in levels(gdc$PAM50)){
+  print(subtype)
+  temp <- subset(meta, MMR != "MLH1")
+  #print(table(temp$PAM50 == subtype, temp$MSH2_low))
+  print(fisher.test(table(temp$PAM50 == subtype, temp$MSH2_low)))
+  rm(temp)
+}
+
 #MSI by subtype
 ggplot(data=subset(gdc, HR == 'HR+/HER2+'), aes(x=MMR, fill=MSI)) +
   geom_bar(position="fill", stat="count") +
@@ -494,10 +520,14 @@ fit <- survfit(Surv(time, event) ~ MMR, data=surv.df)
 ggsurvplot(fit, data=surv.df, pval=T, xlim=c(0,10), break.time.by=1,
            surv.scale="percent", title="TCGA (Overall)")
 
-fit <- survfit(Surv(time, event) ~ PAM50,
-               data=subset(surv.df, PAM50 == "LumA" | PAM50 == "Basal"))
-ggsurvplot(fit, data=surv.df, pval=T, xlim=c(0,10), break.time.by=1,
-           surv.scale="percent", title="TCGA (Overall)")
+fit <- survfit(Surv(time, event) ~ PAM50, data=surv.df)
+ggsurvplot(fit, data=surv.df, pval=T,
+           xlim=c(0,10), xlab="Time (Years)", break.time.by=1,
+           legend.title="", legend.labs=levels(surv.df$PAM50),
+           surv.scale="percent", ylab="Survival probability",
+           title="TCGA (Overall)", censor=F,
+           palette=c('#CC79A7', '#c29f1f', '#27AD81', '#31688E', '#471164'))
+ggsave("Images/TCGA_survival_overall.tiff", dpi=600)
 
 #MLH1
 fit <- survfit(Surv(time, event) ~ MLH1_low.subtype,
@@ -624,8 +654,8 @@ fit <- survfit(Surv(time, event) ~ combo.msh2,
 ggsurvplot(fit, data=surv.df,
            pval=F, xlim=c(0,10), break.time.by=1,
            xlab="Time (Years)", ylab="Disease Free Survival",
-           legend.labs=c("Luminal A Rest\n(n=464)", "Luminal A MSH2\n(n=44)",
-                         "Basal Rest\n(n=161)", "Basal MSH2\n(n=15)"),
+           legend.labs=c("Luminal A Rest\n(n=464)", "Luminal A MSH2 Low\n(n=44)",
+                         "Basal Rest\n(n=161)", "Basal MSH2 Low\n(n=15)"),
            linetype=c(1,2,1,2), censor.shape=124, censor.size=3, censor=F,
            surv.scale="percent",
            #legend.title="Luminal                                      Basal",

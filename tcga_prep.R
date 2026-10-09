@@ -196,4 +196,4 @@ for(i in 1:length(gdc$HR)){
 }
 
 
-write.csv(gdc, file="tcga_prepped.csv")
+write.csv(gdc, file="tcga_prepped.csv", row.names=F)

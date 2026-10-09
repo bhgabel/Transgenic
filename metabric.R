@@ -72,29 +72,22 @@ ggplot(data=subset(meta, !is.na(Mutations)), aes(x=MMR.subtype, y=Mutations, fil
 
 ggsave(filename="Images/Metabric_boxplot_TMB.tiff", dpi=600)
 
-ggplot(data=subset(meta, !is.na(Mutations)),
-       aes(x=PAM50, y=Mutations, fill=MMR.subtype)) +
-  geom_boxplot() +
-  scale_y_continuous(trans="log10") +
+ggplot(data=subset(meta, !is.na(Mutations) & !is.na(PAM50) & !is.na(MMR.subtype)),
+       aes(x=PAM50, y=Mutations, fill=PAM50)) +
+  geom_boxplot(alpha=0.9) + scale_y_continuous(limits=c(0, 30)) +
   theme_classic() +
-  labs(x=NULL, y="Mutation Count (log10)", fill="MMR",
-       title="Tumor Mutation Burden (METABRIC)") +
-  scale_fill_discrete(palette=c('#3953A4', '#FECB67', "grey"),
-                      labels=c("MLH1 Low", "MSH2 Low", "Rest")) +
+  labs(x=NULL, y="Mutation Count",
+       title="Tumor Mutation Burden (METABRIC)", fill="PAM50") +
+  scale_fill_manual(values=c('#CC79A7', '#c29f1f', '#27AD81', '#31688E', '#471164')) +
   theme(axis.text.x=element_text(size=16),
         axis.title.y=element_text(size=18),
         axis.text.y=element_text(size=14),
         legend.title=element_text(size=14),
         legend.text=element_text(size=14),
-        plot.title=element_text(size=19, hjust=0.5)) +
-  geom_signif(y_position=c(1.5),
-              xmin=c(3.75),
-              xmax=c(4.25),
-              annotation=c("*"), textsize=5,
-              tip_length=0.02)
+        plot.title=element_text(size=19, hjust=0.5))
 
-
-ggsave(filename="Images/Metabric_boxplot_TMB_by_subtype.tiff", dpi=600)
+pairwise.wilcox.test(meta$Mutations, meta$PAM50, p.adjust.method="none")
+ggsave(filename="Images/Metabric_boxplot_TMB_by_subtype_not_MMR.tiff", dpi=600)
 
 
 #relevel factor for legend order
@@ -175,15 +168,15 @@ chisq.test(table(meta$PAM50 == "LumA" | meta$PAM50 == "LumB", meta$MMR == "MSH2"
 #Survival plots ----
 #colnames(meta)[c(61,62)] <- c("Surv.Status", "Relapse.Months")
 meta$Relapse.Status.l <- ifelse(meta$Relapse.Status == "0:Not Recurred", 0, 1)
-meta$Relapse.Months <- meta$Relapse.Months/12 #years for plotting
+meta$Relapse.Years <- meta$Relapse.Months/12 #years for plotting
 
 meta$HR <- relevel(meta$HR, ref='HR+/HER2-')
 meta$MMR <- relevel(meta$MMR, ref="None")
 
 
 # surv.df <- meta
-surv.df$time <- ifelse(surv.df$Relapse.Months >=11, 11, surv.df$Relapse.Months)
-surv.df$event <- ifelse(surv.df$Relapse.Months >= 11, 0, surv.df$Relapse.Status.l)
+surv.df$time <- ifelse(surv.df$Relapse.Years >=11, 11, surv.df$Relapse.Years)
+surv.df$event <- ifelse(surv.df$Relapse.Years >= 11, 0, surv.df$Relapse.Status.l)
 
 # surv.df <- read.csv("Relapse_Free_METABRIC_combined_Sv_070626.csv", header=T)
 # surv.df$time <- surv.df$time/12
@@ -263,6 +256,15 @@ ggsurvplot(fit, data=surv.df, pval=T,
            xlim=c(0,10), xlab="Time (Years)", break.time.by=1,
            legend.title="", surv.scale="percent", ylab="Survival probability",
            title="Metabric (Overall)")
+
+fit <- survfit(Surv(time, event) ~ PAM50, data=surv.df)
+ggsurvplot(fit, data=surv.df, pval=T,
+           xlim=c(0,10), xlab="Time (Years)", break.time.by=1,
+           legend.title="", legend.labs=levels(surv.df$PAM50),
+           surv.scale="percent", ylab="Survival probability",
+           title="Metabric (Overall)", censor=F,
+           palette=c('#CC79A7', '#c29f1f', '#27AD81', '#31688E', '#471164'))
+ggsave("Images/Metabric_survival_overall.tiff", dpi=600)
 
 #MLH1
 
