@@ -4,6 +4,7 @@ library(survival)
 library(survminer)
 library(forestmodel)
 library(labelled)
+library(scales)
 
 gdc <- read.csv("tcga_prepped.csv")
 
@@ -371,6 +372,10 @@ ggplot(data=subset(gdc, !is.na(PAM50)), aes(x=MSH2_quin, fill=PAM50)) +
 
 ggsave("Images/TCGA_enrichment_MHS2_quintiles.png", dpi=600)
 
+table(gdc$PAM50, gdc$MLH1_quin)
+table(gdc$PAM50, gdc$MSH2_quin)
+sum(gdc$MLH1_quin == 1 & gdc$MSH2_quin == 5 & gdc$PAM50 == "Basal")
+
 #relevel factor for legend order
 gdc$PAM50 <- factor(gdc$PAM50, levels=c("Basal", "Normal", "Her2", "LumA", "LumB"))
 
@@ -438,6 +443,54 @@ print("MSH2 low vs rest - Luminal A")
 chisq.test(table(gdc$PAM50 == "LumA", gdc$MMR == "MSH2"))
 print("MSH2 low vs rest - Luminal:")
 chisq.test(table(gdc$PAM50 == "LumA" | gdc$PAM50 == "LumB", gdc$MMR == "MSH2"))
+sink()
+
+
+#BRCA1 enrichment
+gdc$BRCA1_MLH1 <- factor(NA, levels=c("None", "MLH1", "Both", "BRCA1"))
+for(i in 1:length(gdc[[1]])){
+  if(is.na(gdc$MLH1_low[[i]]) | is.na(gdc$BRCA1_mut[[i]])){
+    gdc$BRCA1_MLH1[[i]] <- NA
+  }
+  else if(gdc$MLH1_low[[i]] & gdc$BRCA1_mut[[i]]){
+    gdc$BRCA1_MLH1[[i]] <- "Both"
+  }
+  else if(gdc$MLH1_low[[i]] & !gdc$BRCA1_mut[[i]]){
+    gdc$BRCA1_MLH1[[i]] <- "MLH1"
+  }
+  else if(!gdc$MLH1_low[[i]] & gdc$BRCA1_mut[[i]]){
+    gdc$BRCA1_MLH1[[i]] <- "BRCA1"
+  }
+  else if(!gdc$MLH1_low[[i]] & !gdc$BRCA1_mut[[i]]){
+    gdc$BRCA1_MLH1[[i]] <- "None"
+  }
+  else{
+    gdc$BRCA1_MLH1 <- NA
+  }
+}
+
+summary(gdc$BRCA1_MLH1)
+
+gdc %>% drop_na(BRCA1_MLH1) %>% 
+  ggplot(aes(x=PAM50, fill=BRCA1_MLH1)) +
+    geom_bar(stat='count', position='fill') +
+    theme_classic() +
+    coord_cartesian(ylim=c(0, 0.6)) +
+    scale_y_continuous(labels=percent) +
+    scale_fill_manual(values=c('grey', '#31688E', '#27AD81', '#471164'),
+                      labels=c("None", "MLH1 Low", "Both", "BRCA1 Mutation")) +
+    labs(title="BRCA1 and MLH1 Perturbance Enriched in Basal-like",
+         y="Proportion", fill="Perturbance")
+
+ggsave("Images/TCGA_enrichment_brca.tiff", dpi=600)
+
+sink(file="tcga_brca_stats.txt")
+print("BRCA1 mutation enrichment in Basal subtype")
+fisher.test(table(gdc$BRCA1_mut, gdc$PAM50=="Basal"))
+
+print("BRCA1 mutations and MLH1 loss across PAM50 subtypes")
+table(gdc$BRCA1_MLH1, gdc$PAM50)
+chisq.test(table(gdc$PAM50, gdc$BRCA1_MLH1), simulate.p.value=T)
 sink()
 
 for(subtype in levels(gdc$PAM50)){
@@ -548,6 +601,26 @@ for(i in 1:length(surv.df$PAM50)){
   }
 }
 
+surv.df$combo.mlh1 <- factor(NA, levels=c("LumA:None", "LumA:MLH1",
+                                          "LumB:None", "LumB:MLH1"))
+
+for(i in 1:length(surv.df$PAM50)){
+  if(is.na(surv.df$PAM50[[i]])){
+    surv.df$combo.mlh1[[i]] <- NA
+  }
+  else if(surv.df$PAM50[[i]] == "LumA"){
+    surv.df$combo.mlh1[[i]] <- ifelse(surv.df$MLH1_low.subtype[[i]],
+                                      "LumA:MLH1", "LumA:None")
+  }
+  else if(surv.df$PAM50[[i]] == "LumB"){
+    surv.df$combo.mlh1[[i]] <- ifelse(surv.df$MLH1_low.subtype[[i]],
+                                      "LumB:MLH1", "LumB:None")
+  }
+  else{
+    surv.df$combo.mlh1[[i]] <- NA
+  }
+}
+
 
 fit <- survfit(Surv(time, event) ~ MMR, data=surv.df)
 ggsurvplot(fit, data=surv.df, pval=T, xlim=c(0,10), break.time.by=1,
@@ -580,6 +653,8 @@ ggsurvplot(fit, data=subset(surv.df, PAM50=="LumB"), pval=T,
            legend.title="", surv.scale="percent",
            title="TCGA (Luminal B)", palette=c("black", "#31688E"))$plot +
   theme(plot.title = element_text(hjust=0.5, size=16))
+
+ggsave(filename="Images/TCGA_survival_MLH1_LumB_v2.tiff", dpi=600)
 
 fit <- survfit(Surv(time, event) ~ MLH1_low.subtype,
                data=subset(surv.df, PAM50 == "LumA" | PAM50 == "LumB"))
@@ -632,6 +707,31 @@ ggsurvplot(fit, data=surv.df,
            label="Overall: p = 0.02\nLuminal A: HR = 2.13, p = 0.026\nBasal: HR = 0.52, p = 0.36",
            x=0.1, y=0.15, hjust=0)
 ggsave(filename="Images/TCGA_survival_MLH1_Combo_v1.tiff", dpi=600)
+
+
+fit <- survfit(Surv(time, event) ~ combo.mlh1,
+               data=surv.df)
+ggsurvplot(fit, data=surv.df,
+           pval=F, xlim=c(0,10), break.time.by=1,
+           xlab="Time (Years)", ylab="Disease Free Survival",
+           legend.labs=c("Luminal A\nRest\n(n=451)", "Luminal A\nMLH1 Low\n(n=57)",
+                         "Luminal B\nRest\n(n=166)", "Luminal B\nMLH1 Low\n(n=24)"),
+           linetype=c(1,2,1,2), censor.shape=124, censor.size=3, censor=F,
+           surv.scale="percent",
+           #legend.title="Luminal                                   Basal",
+           subtitle="(TCGA)",
+           title="Probability of Survival with MLH1 Loss",
+           palette=c('#009E73', '#009E73', '#CC79A7', '#CC79A7'))$plot +
+  theme(plot.title=element_text(hjust=0.5, size=16, face="bold", family="Arial"),
+        plot.subtitle=element_text(hjust=0.5, size=14, face="bold"),
+        #legend.title=element_text(hjust=0.5, size=12),
+        legend.title=element_blank(),
+        legend.key.size=unit(2.2, "line"), legend.location="plot",
+        legend.position="bottom", legend.title.position="top") +
+  annotate("text",
+           label="Overall: p = 0.03\nLuminal A: HR = 2.13, p = 0.026\nLuminal B: HR = 2.14, p = 0.13",
+           x=0.1, y=0.15, hjust=0)
+ggsave(filename="Images/TCGA_survival_MLH1_Combo_Lum.tiff", dpi=600)
 
 
 #MSH2
