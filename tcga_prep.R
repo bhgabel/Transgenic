@@ -39,8 +39,25 @@ colnames(subtypes)[2] <- "PAM50"
 #Combine to main data frame
 gdc <- left_join(gdc, subtypes, by=c("Patient ID" = "patient"))
 
+#Mutatations in BRCA1 / BRCA2
+brca <- read.table("tcga_brca_mutations.tsv", header=T, sep='\t')
+
+brca[1] <- NULL
+for(i in 1:length(brca[[1]])){
+  if(brca[i, 2] == "NP"){
+    brca[i, 2] <- NA
+  }
+  else if(brca[i, 3] == "NP"){
+    brca[i, 3] <- NA
+  }
+}
+brca <- drop_na(brca)
+
+gdc <- left_join(gdc, brca, by=c("Sample.ID"="SAMPLE_ID"))
+
 #remove primary data frames, since everything joined into gdc
-remove(list = c('CIN_data', 'clinical', 'mantis', 'mrna', 'mrna_pam50', 'subtypes'))
+remove(list = c('CIN_data', 'clinical', 'mantis', 'mrna',
+                'mrna_pam50', 'subtypes', 'brca'))
 
 #Assign factors ----
 gdc <- drop_na(gdc, MLH1)
