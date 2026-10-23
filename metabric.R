@@ -200,6 +200,10 @@ ggplot(data=subset(meta, !is.na(PAM50)), aes(x=MSH2_quin, fill=PAM50)) +
 
 ggsave("Images/Metabric_enrichment_MHS2_quintiles.png", dpi=600)
 
+table(meta$PAM50, meta$MLH1_quin)
+table(meta$PAM50, meta$MSH2_quin)
+sum(meta$MLH1_quin == 1 & meta$MSH2_quin == 5 & meta$PAM50 == "Basal")
+
 #Survival plots ----
 #colnames(meta)[c(61,62)] <- c("Surv.Status", "Relapse.Months")
 meta$Relapse.Status.l <- ifelse(meta$Relapse.Status == "0:Not Recurred", 0, 1)
