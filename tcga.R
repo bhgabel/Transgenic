@@ -449,19 +449,19 @@ sink()
 #BRCA1 enrichment
 gdc$BRCA1_MLH1 <- factor(NA, levels=c("None", "MLH1", "Both", "BRCA1"))
 for(i in 1:length(gdc[[1]])){
-  if(is.na(gdc$MLH1_low[[i]]) | is.na(gdc$BRCA1_mut[[i]])){
+  if(is.na(gdc$MLH1_low[[i]]) | is.na(gdc$BRCA1_low[[i]])){
     gdc$BRCA1_MLH1[[i]] <- NA
   }
-  else if(gdc$MLH1_low[[i]] & gdc$BRCA1_mut[[i]]){
+  else if(gdc$MLH1_low[[i]] & gdc$BRCA1_low[[i]]){
     gdc$BRCA1_MLH1[[i]] <- "Both"
   }
-  else if(gdc$MLH1_low[[i]] & !gdc$BRCA1_mut[[i]]){
+  else if(gdc$MLH1_low[[i]] & !gdc$BRCA1_low[[i]]){
     gdc$BRCA1_MLH1[[i]] <- "MLH1"
   }
-  else if(!gdc$MLH1_low[[i]] & gdc$BRCA1_mut[[i]]){
+  else if(!gdc$MLH1_low[[i]] & gdc$BRCA1_low[[i]]){
     gdc$BRCA1_MLH1[[i]] <- "BRCA1"
   }
-  else if(!gdc$MLH1_low[[i]] & !gdc$BRCA1_mut[[i]]){
+  else if(!gdc$MLH1_low[[i]] & !gdc$BRCA1_low[[i]]){
     gdc$BRCA1_MLH1[[i]] <- "None"
   }
   else{
@@ -471,16 +471,17 @@ for(i in 1:length(gdc[[1]])){
 
 summary(gdc$BRCA1_MLH1)
 
-gdc %>% drop_na(BRCA1_MLH1) %>% 
-  ggplot(aes(x=PAM50, fill=BRCA1_MLH1)) +
-    geom_bar(stat='count', position='fill') +
+gdc %>% drop_na(BRCA1_MLH1) %>% filter(PAM50 == "Basal") %>% 
+  ggplot(aes(y=PAM50)) +
+    geom_bar(stat='count', position='fill', aes(fill=BRCA1_MLH1)) +
     theme_classic() +
-    coord_cartesian(ylim=c(0, 0.6)) +
-    scale_y_continuous(labels=percent) +
+    scale_x_continuous(labels=percent) +
     scale_fill_manual(values=c('grey', '#31688E', '#27AD81', '#471164'),
-                      labels=c("None", "MLH1 Low", "Both", "BRCA1 Mutation")) +
-    labs(title="BRCA1 and MLH1 Perturbance Enriched in Basal-like",
-         y="Proportion", fill="Perturbance")
+                      labels=c("None", "MLH1 Low", "Both", "BRCA1 Low")) +
+    labs(title="BRCA1 and MLH1 Loss Enriched in Basal-like",
+         x="Proportion", fill="Perturbance", y="") +
+    guides(fill=guide_legend(reverse=T)) +
+    theme(legend.position="top")
 
 ggsave("Images/TCGA_enrichment_brca.tiff", dpi=600)
 

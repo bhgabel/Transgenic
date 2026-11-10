@@ -121,6 +121,9 @@ cellcycle <- read.table(file="tcga cell cycle mRNA expression z-scores relative 
 
 cellcycle <- left_join(cellcycle, select(gdc, "Sample.ID", "MMR", "PAM50"), by=c("SAMPLE_ID"="Sample.ID"))
 
+cellcycle <- drop_na(cellcycle, MMR)
+
+cellcycle$MMR <- factor(cellcycle$MMR, levels=c("None", "MLH1", "MSH2"))
 
 sink("TCGA_heatmap_stats.txt")
 print("Average Gene Expression by MMR")
@@ -192,3 +195,32 @@ pheatmap(mat=t(basal),
          labels_col=c("MLH1", "MSH2", "Rest"), angle_col=0,
          main="Basal Mean Expression by MMR Deficiency",
          filename="Images/TCGA_heatmap_cellcycle_basal.png")
+
+
+pc.cc <- prcomp(cellcycle[, c(3:12)], center=T, scale.=T)
+
+ggbiplot::ggbiplot(pc.cc, var.scale=1,
+                   ellipse=F, circle=F, var.axes=F, varname.size=0, alpha=0) +
+  geom_point(aes(color=cellcycle$MMR, fill=cellcycle$MMR), shape=21, alpha=0.8) +
+  theme_bw() +
+  labs(title="TCGA by Cell Cycle Genes", fill="MMR") +
+  scale_color_manual(values=c("None"="grey", "MLH1"='#3953A4', "MSH2"='#FECB67'),
+                     guide="none") +
+  scale_fill_manual(values=c("None"="white",  "MLH1"='#3953A4', "MSH2"='#FECB67'),
+                    labels=c("None"="Rest", "MLH1"="MLH1 Low", "MSH2"="MSH2 Low"))
+
+ggsave("Images/TCGA_PCA_cellcycle_mmr.png", dpi=600)
+
+ggbiplot::ggbiplot(pc.cc, var.scale=1,
+                   groups=cellcycle$PAM50,
+                   ellipse=F, ellipse.linewidth=0.8, ellipse.fill=F,
+                   circle=F, var.axes=F, varname.size=0, alpha=0) +
+  geom_point(aes(color=cellcycle$PAM50, shape=cellcycle$MMR, alpha=cellcycle$MMR)) +
+  theme_bw() +
+  labs(title="TCGA by Cell Cycle Genes", color="PAM50", shape="MMR") +
+  scale_color_manual(values=c('#CC79A7', '#c29f1f', '#27AD81', '#31688E', '#471164')) +
+  scale_shape_manual(values=c("None"=21, "MLH1"=3, "MSH2"=24),
+                     labels=c("Rest", "MLH1 Low", "MSH2 Low")) +
+  scale_alpha_manual(values=c("None"=0.4, "MLH1"=0.9, "MSH2"=0.9), guide="none")
+
+ggsave("Images/TCGA_PCA_cellcycle_pam50.png", dpi=600)

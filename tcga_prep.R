@@ -43,6 +43,7 @@ gdc <- left_join(gdc, subtypes, by=c("Patient ID" = "patient"))
 brca <- read.table("tcga_brca_mutations.tsv", header=T, sep='\t')
 
 brca[1] <- NULL
+colnames(brca)[2:3] <- c("BRCA1_mutation", "BRCA2_mutation")
 for(i in 1:length(brca[[1]])){
   if(brca[i, 2] == "NP"){
     brca[i, 2] <- NA
@@ -52,6 +53,22 @@ for(i in 1:length(brca[[1]])){
   }
 }
 brca <- drop_na(brca)
+
+gdc <- left_join(gdc, brca, by=c("Sample.ID"="SAMPLE_ID"))
+
+
+#BRCA 1/2 mRNA values
+brca <- read.table("tcga_brca_rsem.tsv", header=T, sep='\t')
+
+brca[1] <- NULL
+brca <- drop_na(brca)
+
+# mean - sd produced too few pts ?
+# brca$BRCA1_low <- (brca$BRCA1 <= (mean(brca$BRCA1) - sd(brca$BRCA1)))
+# brca$BRCA2_low <- (brca$BRCA2 <= (mean(brca$BRCA2) - sd(brca$BRCA2)))
+
+brca$BRCA1_low <- (brca$BRCA1 <= quantile(brca$BRCA1, probs=0.1))
+brca$BRCA2_low <- (brca$BRCA2 <= quantile(brca$BRCA2, probs=0.1))
 
 gdc <- left_join(gdc, brca, by=c("Sample.ID"="SAMPLE_ID"))
 
