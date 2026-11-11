@@ -32,7 +32,7 @@ meta$MLH1_low <- (meta$MLH1 <= MLH1_prob)
 meta$MSH2_low <- (meta$MSH2 <= MSH2_prob)
 meta$MMR <- factor("None", levels=c("MLH1", "MSH2", "None"))
 for(i in 1:length(meta$MMR)){
-  if(meta$MLH1_low[[i]] && meta$MSH2_low[[i]]){
+  if(meta$MLH1_low[[i]] & meta$MSH2_low[[i]]){
     meta$MMR[[i]] <- NA
   } else if(meta$MLH1_low[[i]]){
     meta$MMR[[i]] <- "MLH1"
@@ -100,7 +100,7 @@ for(i in 1:length(meta$MSH2)){
 
 meta$MMR.subtype <- factor("None", levels=c("MLH1", "MSH2", "None"))
 for(i in 1:length(meta$MMR.subtype)){
-  if(meta$MLH1_low[[i]] && meta$MSH2_low[[i]]){
+  if(meta$MLH1_low[[i]] & meta$MSH2_low[[i]]){
     meta$MMR.subtype[[i]] <- NA
   } else if(meta$MLH1_low[[i]]){
     meta$MMR.subtype[[i]] <- "MLH1"

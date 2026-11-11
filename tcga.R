@@ -379,7 +379,7 @@ sum(gdc$MLH1_quin == 1 & gdc$MSH2_quin == 5 & gdc$PAM50 == "Basal")
 #relevel factor for legend order
 gdc$PAM50 <- factor(gdc$PAM50, levels=c("Basal", "Normal", "Her2", "LumA", "LumB"))
 
-cutoff <- quantile(gdc$MLH1, probs=0.1427)
+cutoff <- quantile(gdc$MLH1, probs=0.12)
 ggplot(data=subset(gdc, PAM50 != "NA"), aes(x=PAM50, y=MLH1, fill=PAM50)) +
   geom_violin() + stat_summary(fun=mean, geom="crossbar") +
   geom_hline(yintercept=cutoff, linetype="dashed", color="red") +
@@ -394,7 +394,7 @@ ggplot(data=subset(gdc, PAM50 != "NA"), aes(x=PAM50, y=MLH1, fill=PAM50)) +
         legend.text=element_text(size=rel(1.2)),
         legend.title=element_text(size=rel(1.3)))
 
-cutoff <- quantile(gdc$MSH2, probs=0.05)
+cutoff <- quantile(gdc$MSH2, probs=0.08)
 ggplot(data=subset(gdc, PAM50 != "NA"), aes(x=PAM50, y=MSH2, fill=PAM50)) +
   geom_violin() + stat_summary(fun=mean, geom="crossbar") +
   geom_hline(yintercept=cutoff, linetype="dashed", color="red") +
@@ -438,11 +438,11 @@ round(proportions(table(gdc$PAM50, gdc$MMR), margin=2)*100, digits=1)
 print("Overall")
 chisq.test(table(gdc$PAM50, gdc$MMR), simulate.p.value=T)
 print("MLH1 low vs rest - Basal")
-chisq.test(table(gdc$PAM50 == "Basal", gdc$MMR == "MLH1"))
+fisher.test(table(gdc$PAM50 == "Basal", gdc$MMR == "MLH1"))
 print("MSH2 low vs rest - Luminal A")
-chisq.test(table(gdc$PAM50 == "LumA", gdc$MMR == "MSH2"))
+fisher.test(table(gdc$PAM50 == "LumA", gdc$MMR == "MSH2"))
 print("MSH2 low vs rest - Luminal:")
-chisq.test(table(gdc$PAM50 == "LumA" | gdc$PAM50 == "LumB", gdc$MMR == "MSH2"))
+fisher.test(table(gdc$PAM50 == "LumA" | gdc$PAM50 == "LumB", gdc$MMR == "MSH2"))
 sink()
 
 
