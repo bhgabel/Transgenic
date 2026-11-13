@@ -1,9 +1,9 @@
 library(tidyverse)
 library(ggbiplot)
+library(pheatmap)
 library("DESeq2")
 library(clusterProfiler)
 library(org.Hs.eg.db)
-library(pheatmap)
 
 tcga <- read.csv(file="tcga_pam50.csv", header=T)
 
@@ -114,21 +114,26 @@ ggbiplot::ggbiplot(pc.lum, var.scale=1,
                     labels=c("None"="Rest", "MLH1"="MLH1 Low", "MSH2"="MSH2 Low"))
 
 
+# Cell cycle ----
 
-
+#import and clean data
 cellcycle <- read.table(file="tcga cell cycle mRNA expression z-scores relative to all samples (log RNA Seq V2 RSEM).tsv",
                         sep='\t', header=T)
 
-cellcycle <- left_join(cellcycle, select(gdc, "Sample.ID", "MMR", "PAM50"), by=c("SAMPLE_ID"="Sample.ID"))
+cellcycle <- left_join(cellcycle, select(gdc, "Sample.ID", "MMR", "PAM50"),
+                       by=c("SAMPLE_ID"="Sample.ID"))
 
 cellcycle <- drop_na(cellcycle, MMR)
 
-cellcycle$MMR <- factor(cellcycle$MMR, levels=c("None", "MLH1", "MSH2"))
+cellcycle$MMR <- factor(cellcycle$MMR, levels=c("MLH1", "MSH2", "None"))
 
-sink("TCGA_heatmap_stats.txt")
-print("Average Gene Expression by MMR")
+#create df of just avg values
 ccmeans <- cellcycle %>% group_by(MMR) %>% summarise_at(vars(CCNC:CCNB1), mean, na.rm=T)
 ccmeans <- as.data.frame(ccmeans) %>% column_to_rownames(var="MMR")
+
+#print stats to output file
+sink("TCGA_heatmap_stats.txt")
+print("Average Gene Expression by MMR")
 
 basal <- cellcycle %>% filter(PAM50 == "Basal") %>% group_by(MMR) %>%
   summarise_at(vars(CCNC:CCNB1), mean, na.rm=T)
@@ -156,6 +161,7 @@ lapply(cellcycle[1:10], function(col){
        pairwise.wilcox.test(col, cellcycle$MMR)})
 sink()
 
+#prep for heatmap
 cellcycle <- column_to_rownames(cellcycle, var="SAMPLE_ID") %>% arrange("MMR")
 
 
@@ -164,18 +170,18 @@ annot_row <- data.frame(Phase=factor(c("G0/G1", "G0/G1", "G1/S", "G1/S", "G1/S",
                                 "G1/S", "G1/S/G2", "S/G2", "M", "M"),
                                 levels=c("G0/G1", "G1/S", "G1/S/G2", "S/G2", "M"),
                                 ordered=T),
-                        row.names=colnames(cellcycle)[1:10])
+                        row.names=colnames(cellcycle)[2:11])
 
 color <- list("MMR"=c("None"="grey", "MLH1"="blue", "MSH2"="yellow"),
               "PAM50"=c("Basal"='#E3E418', "Normal"='#27AD81',
                         "Her2"='#31688E', "LumA"='#443A83', "LumB"='#471164'))
 
-pheatmap(t(cellcycle[c(1:10)]), scale="row",
+pheatmap(t(cellcycle[, c(2:11)]), scale="row",
          color=colorRampPalette(c("blue", "white", "red"))(100),
          show_colnames=F, cluster_rows=F, #cluster_cols=F,
          annotation_row=annot_row, legend=F,
          annotation_col=annot_col, annotation_colors=color,
-         main="Differential Cell Cycle Markers in TCGA",
+         main="Differential Cell Cycle Markers in TCGA")
          filename="Images/TCGA_heatmap_cellcycle_clustered.png")
 
 pheatmap(mat=t(ccmeans),
@@ -184,7 +190,7 @@ pheatmap(mat=t(ccmeans),
          annotation_row=annot_row, annotation_names_row=F,
          display_numbers=T, number_color="black",
          labels_col=c("MLH1", "MSH2", "Rest"), angle_col=0,
-         main="Mean Expression by MMR Deficiency",
+         main="Mean RSEM Expression by MMR Deficiency")
         filename="Images/TCGA_heatmap_cellcycle_mean.png")
 
 pheatmap(mat=t(basal),
@@ -193,7 +199,7 @@ pheatmap(mat=t(basal),
          annotation_row=annot_row, annotation_names_row=F,
          display_numbers=T, number_color="black",
          labels_col=c("MLH1", "MSH2", "Rest"), angle_col=0,
-         main="Basal Mean Expression by MMR Deficiency",
+         main="Basal Mean Expression by MMR Deficiency")
          filename="Images/TCGA_heatmap_cellcycle_basal.png")
 
 
@@ -224,3 +230,73 @@ ggbiplot::ggbiplot(pc.cc, var.scale=1,
   scale_alpha_manual(values=c("None"=0.4, "MLH1"=0.9, "MSH2"=0.9), guide="none")
 
 ggsave("Images/TCGA_PCA_cellcycle_pam50.png", dpi=600)
+
+
+
+
+# DDR ----
+
+#import and clean data
+ddr <- read.table("tcga ddr mRNA expression z-scores relative to all samples (log RNA Seq V2 RSEM).tsv", 
+                  sep='\t', header=T)
+
+ddr <- left_join(ddr, select(gdc, "Sample.ID", "MMR", "PAM50"),
+                 by=c("SAMPLE_ID"="Sample.ID"))
+
+ddr <- drop_na(ddr, MMR)
+
+ddr$MMR <- factor(ddr$MMR, levels=c("MLH1", "MSH2", "None"))
+
+#prep for heatmap
+ddr <- column_to_rownames(ddr, var="SAMPLE_ID") %>% arrange("MMR")
+
+annot_col <- select(ddr, "MMR", "PAM50")
+
+ddrmeans <- ddr %>% group_by(MMR) %>% summarise_at(vars(APEX1:ATP23), mean, na.rm=T)
+ddrmeans <- as.data.frame(ddrmeans) %>% column_to_rownames(var="MMR")
+
+
+pheatmap(t(ddr[, c(2:143)]), scale="row",
+         color=colorRampPalette(c("blue", "white", "red"))(100),
+         show_colnames=F, cluster_rows=F, #cluster_cols=F,
+         show_rownames=F,
+         annotation_col=annot_col, annotation_colors=color,
+         main="Differential DDR Markers in TCGA")
+
+pheatmap(mat=t(ddrmeans),
+         color=colorRampPalette(c("blue", "white", "red"))(100),
+         cluster_rows=T, cluster_cols=F,
+         show_rownames=F,
+         #display_numbers=T, number_color="black",
+         labels_col=c("MLH1", "MSH2", "None"), angle_col=0,
+         main="DDR Gene Mean Expression by MMR Deficiency")
+
+#PCA
+
+pc.ddr <- prcomp(ddr[, c(2:143)], center=T, scale.=T)
+
+ggbiplot::ggbiplot(pc.ddr, var.scale=1,
+                   ellipse=F, circle=F, var.axes=F, varname.size=0, alpha=0) +
+  geom_point(aes(color=ddr$MMR, fill=ddr$MMR), shape=21, alpha=0.8) +
+  theme_bw() +
+  labs(title="TCGA by DDR Genes", fill="MMR") +
+  scale_color_manual(values=c("None"="grey", "MLH1"='#3953A4', "MSH2"='#FECB67'),
+                     guide="none") +
+  scale_fill_manual(values=c("None"="white",  "MLH1"='#3953A4', "MSH2"='#FECB67'),
+                    labels=c("None"="Rest", "MLH1"="MLH1 Low", "MSH2"="MSH2 Low"))
+
+ggsave("Images/TCGA_PCA_ddr_mmr.png", dpi=600)
+
+ggbiplot::ggbiplot(pc.ddr, var.scale=1,
+                   #groups=cellcycle$PAM50,
+                   #ellipse=T, ellipse.linewidth=0.8, ellipse.fill=F,
+                   circle=F, var.axes=F, varname.size=0, alpha=0) +
+  geom_point(aes(color=cellcycle$PAM50, shape=cellcycle$MMR, alpha=cellcycle$MMR)) +
+  theme_bw() +
+  labs(title="TCGA by DDR Genes", color="PAM50", shape="MMR") +
+  scale_color_manual(values=c('#CC79A7', '#c29f1f', '#27AD81', '#31688E', '#471164')) +
+  scale_shape_manual(values=c("None"=21, "MLH1"=3, "MSH2"=24),
+                     labels=c("Rest", "MLH1 Low", "MSH2 Low")) +
+  scale_alpha_manual(values=c("None"=0.4, "MLH1"=0.9, "MSH2"=0.9), guide="none")
+
+ggsave("Images/TCGA_PCA_ddr_pam50.png", dpi=600)
