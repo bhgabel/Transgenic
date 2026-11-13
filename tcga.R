@@ -449,19 +449,19 @@ sink()
 #BRCA1 enrichment
 gdc$BRCA1_MLH1 <- factor(NA, levels=c("None", "MLH1", "Both", "BRCA1"))
 for(i in 1:length(gdc[[1]])){
-  if(is.na(gdc$MLH1_low[[i]]) | is.na(gdc$BRCA1_low[[i]])){
+  if(is.na(gdc$MLH1_low[[i]]) | is.na(gdc$BRCA1_mut[[i]])){
     gdc$BRCA1_MLH1[[i]] <- NA
   }
-  else if(gdc$MLH1_low[[i]] & gdc$BRCA1_low[[i]]){
+  else if(gdc$MLH1_low[[i]] & gdc$BRCA1_mut[[i]]){
     gdc$BRCA1_MLH1[[i]] <- "Both"
   }
-  else if(gdc$MLH1_low[[i]] & !gdc$BRCA1_low[[i]]){
-    gdc$BRCA1_MLH1[[i]] <- "MLH1"
-  }
-  else if(!gdc$MLH1_low[[i]] & gdc$BRCA1_low[[i]]){
+  else if(!gdc$MLH1_low[[i]] & gdc$BRCA1_mut[[i]]){
     gdc$BRCA1_MLH1[[i]] <- "BRCA1"
   }
-  else if(!gdc$MLH1_low[[i]] & !gdc$BRCA1_low[[i]]){
+  else if(gdc$MLH1_low[[i]] & !gdc$BRCA1_mut[[i]]){
+    gdc$BRCA1_MLH1[[i]] <- "MLH1"
+  }
+  else if(!gdc$MLH1_low[[i]] & !gdc$BRCA1_mut[[i]]){
     gdc$BRCA1_MLH1[[i]] <- "None"
   }
   else{
@@ -484,6 +484,17 @@ gdc %>% drop_na(BRCA1_MLH1) %>% filter(PAM50 == "Basal") %>%
     theme(legend.position="top")
 
 ggsave("Images/TCGA_enrichment_brca.tiff", dpi=600)
+
+
+gdc %>% drop_na(BRCA1_MLH1) %>% filter(BRCA1_MLH1 != "Both") %>%
+  mutate(BRCA1_MLH1=fct_relevel(BRCA1_MLH1, "MLH1", "BRCA1", "None")) %>% 
+  ggplot(aes(x=BRCA1_MLH1, y=Mutations, fill=BRCA1_MLH1)) +
+  geom_boxplot() + scale_y_continuous(trans="log10") +
+  theme_classic() +
+  scale_fill_manual(values=c("None"="grey", "MLH1"='#31688E', "BRCA1"='#27AD81'),
+                    labels=c("None"="Rest", "MLH1 Low", "BRCA1 Mutants"),
+                    guide="none") +
+  labs(title="TMB by Gene Perterbance", x=NULL, y="Mutation Count (log10)")
 
 sink(file="tcga_brca_stats.txt")
 print("BRCA1 mutation enrichment in Basal subtype")
