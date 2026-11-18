@@ -4,6 +4,8 @@ library(ggbiplot)
 
 scanb <- read.csv("scanb_prepped.csv", header=T)
 
+scanb$PAM50 <- factor(scanb$PAM50, levels=c("Basal", "Normal", "Her2", "LumA", "LumB"))
+
 #enrichment by MMR
 
 ggplot(data=subset(scanb, !is.na(MMR)), aes(x=MMR, fill=PAM50)) +
