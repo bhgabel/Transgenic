@@ -121,14 +121,16 @@ cellcycle <- read.table(file="tcga cell cycle mRNA expression z-scores relative 
                         sep='\t', header=T)
 
 cellcycle <- left_join(cellcycle, select(gdc, "Sample.ID", "MMR", "PAM50"),
-                       by=c("SAMPLE_ID"="Sample.ID"))
+                       by=c("SAMPLE_ID"="Sample.ID")) %>% 
+             drop_na(cellcycle, MMR)
 
-cellcycle <- drop_na(cellcycle, MMR)
 
 cellcycle$MMR <- factor(cellcycle$MMR, levels=c("MLH1", "MSH2", "None"))
 
 #create df of just avg values
-ccmeans <- cellcycle %>% group_by(MMR) %>% summarise_at(vars(CCNC:CCNB1), mean, na.rm=T)
+ccmeans <- cellcycle %>% group_by(MMR) %>%
+           summarise_at(vars(CCNC:CCNB1), mean, na.rm=T)
+
 ccmeans <- as.data.frame(ccmeans) %>% column_to_rownames(var="MMR")
 
 #print stats to output file
@@ -165,7 +167,7 @@ sink()
 cellcycle <- column_to_rownames(cellcycle, var="SAMPLE_ID") %>% arrange("MMR")
 
 
-annot_col <- select(cellcycle, "MMR", "PAM50")
+annot_col <- dplyr::select(cellcycle, "MMR", "PAM50")
 annot_row <- data.frame(Phase=factor(c("G0/G1", "G0/G1", "G1/S", "G1/S", "G1/S",
                                 "G1/S", "G1/S/G2", "S/G2", "M", "M"),
                                 levels=c("G0/G1", "G1/S", "G1/S/G2", "S/G2", "M"),

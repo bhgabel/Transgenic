@@ -10,10 +10,15 @@ clinical <- read.table("SCAN-B/Clinical Metadata/SCANB_clinical_metadata.txt",
 genes <- read.table("SCAN-B/Gene Annotations/Gene.ID.ann.txt",
                     sep='\t', header=T)
 
-selection <- read.csv("pam50_gene_list.csv")
+pam50 <- read.csv("pam50_gene_list.csv")
+# cellcycle <- read.csv("cellcycle_gene_list.csv")
+cellcycle <- c("CCNC", "CDK3", "CCND1", "CDK4", "CDK6", "CCNE1", "CDK2",
+               "CCNA2", "CDK1", "CCNB1")
 
-gene.ids <- genes$Gene.ID[genes$EntrezGene %in% selection$EntrezGene.ID |
-                          genes$Gene.Name %in% c("MLH1", "MSH2", "BRCA1")]
+
+gene.ids <- genes$Gene.ID[genes$EntrezGene %in% pam50$EntrezGene.ID |
+                          genes$Gene.Name %in% c("MLH1", "MSH2", "BRCA1") |
+                          genes$Gene.Name %in% cellcycle]
 
 
 
@@ -40,9 +45,9 @@ rna <- rownames_to_column(rna, var='StringTieName')
 scanb <- left_join(rna, clinical)
 
 #cast all values to numeric
-scanb[, 2:54] <- lapply(scanb[, 2:54], as.numeric)
+scanb[, 2:62] <- lapply(scanb[, 2:62], as.numeric)
 
-rm(clinical, genes, rna, selection, gene.ids)
+rm(clinical, genes, rna, pam50, cellcycle, gene.ids)
 
 
 #classify patients with PAM50
@@ -64,8 +69,6 @@ write.csv(pam50.pred$subtype.proba, file="scanb_pam50_prob.csv", row.names=F)
 rm(gene_info, pam50.robust, pam50.pred, temp)
 
 #set factors for low RNA expression
-
-
 scanb$MLH1_low <- (scanb$MLH1 <= quantile(scanb$MLH1, probs=0.12, na.rm=T))
 scanb$MSH2_low <- (scanb$MSH2 <= quantile(scanb$MSH2, probs=0.08, na.rm=T))
 scanb$BRCA1_low <- (scanb$BRCA1 <= quantile(scanb$BRCA1, probs=0.10, na.rm=T))

@@ -1,6 +1,7 @@
 library(tidyverse)
 library(scales)
 library(ggbiplot)
+library(pheatmap)
 
 scanb <- read.csv("scanb_prepped.csv", header=T)
 
@@ -82,3 +83,44 @@ ggplot(data=scanb, aes(x=PAM50, y=MSH2, fill=PAM50)) +
         legend.title=element_text(size=rel(1.3)))
 
 scanb %>% group_by(PAM50) %>% summarise(mean = mean(MSH2))
+
+# Cellcycle heatmap
+cellcycle <- c("CCNC", "CDK3", "CCND1", "CDK4", "CDK6", "CCNE1", "CDK2",
+               "CCNA2", "CDK1", "CCNB1")
+
+cellcycle <- scanb %>% dplyr::select(all_of(c(cellcycle, "MMR", "PAM50"))) %>%
+  drop_na(MMR, PAM50)
+
+#convert to z scores
+cellcycle[, 1:10] <- as.numeric(scale(cellcycle[, 1:10]))
+
+ccmeans <- cellcycle %>% group_by(MMR) %>% summarise_at(vars(CCNC:CCNB1), mean, na.rm=T)
+ccmeans <- as.data.frame(ccmeans) %>% column_to_rownames(var="MMR")
+
+annot_col <- dplyr::select(cellcycle, "MMR", "PAM50")
+annot_row <- data.frame(Phase=factor(c("G0/G1", "G0/G1", "G1/S", "G1/S", "G1/S",
+                                       "G1/S", "G1/S/G2", "S/G2", "M", "M"),
+                                     levels=c("G0/G1", "G1/S", "G1/S/G2", "S/G2", "M"),
+                                     ordered=T),
+                        row.names=colnames(cellcycle)[1:10])
+
+color <- list("MMR"=c("None"="grey", "MLH1"="blue", "MSH2"="yellow"),
+              "PAM50"=c("Basal"='#E3E418', "Normal"='#27AD81',
+                        "Her2"='#31688E', "LumA"='#443A83', "LumB"='#471164'))
+
+pheatmap(t(cellcycle[, c(1:10)]), scale="row",
+         color=colorRampPalette(c("blue", "white", "red"))(100),
+         show_colnames=F, cluster_rows=F, #cluster_cols=F,
+         annotation_row=annot_row, legend=F,
+         annotation_col=annot_col, annotation_colors=color,
+         main="Differential Cell Cycle Markers in TCGA")
+filename="Images/SCANB_heatmap_cellcycle_clustered.png")
+
+pheatmap(mat=t(ccmeans),
+         color=colorRampPalette(c("blue", "white", "red"))(100),
+         cluster_rows=F, cluster_cols=F,
+         annotation_row=annot_row, annotation_names_row=F,
+         display_numbers=T, number_color="black",
+         labels_col=c("MLH1", "MSH2", "Rest"), angle_col=0,
+         main="Mean FPKM Expression by MMR Deficiency (SCAN-B)")
+filename="Images/SCANB_heatmap_cellcycle_mean.png")
